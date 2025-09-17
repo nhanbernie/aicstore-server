@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+  schedoryn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: schedoryn
+    restart: unless-stopped
+    ports:
+      - '${PORT}:${PORT}'
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - MONGODB_URI=mongodb://mongo:27017/${MONGODB_NAME}
+    depends_on:
+      - mongo
+    command: npm run start:dev
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo_container
+    restart: always
+    ports:
+      - '${MONGODB_PORT}:${MONGODB_PORT}'
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_NAME}
+
+volumes:
+  mongo-data:
