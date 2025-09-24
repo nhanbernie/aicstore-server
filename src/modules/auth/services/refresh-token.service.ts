@@ -96,7 +96,7 @@ export class RefreshTokenService {
   }
 
   private getExpirationDate(): Date {
-    const expiresIn = this.configService.get<string>('jwt.refreshExpiresIn');
+    const expiresIn = this.configService.get<string>('jwt.refreshExpiresIn') || '7d';
     const now = new Date();
     
     // Parse the expiration string (e.g., '7d', '24h', '60m')
