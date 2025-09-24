@@ -16,6 +16,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLE } from '../../common/enums/auth.enums';
 import { plainToClass } from 'class-transformer';
+import { ResponseMessage, ResponseMessages } from '../../common/decorators/response-message.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,6 +25,7 @@ export class UsersController {
 
   @Post()
   @Roles(ROLE.ADMIN)
+  @ResponseMessage(ResponseMessages.USER_CREATED)
   async create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
     const user = await this.usersService.create(createUserDto);
     return plainToClass(UserResponseDto, user, { excludeExtraneousValues: true });
@@ -31,6 +33,7 @@ export class UsersController {
 
   @Get()
   @Roles(ROLE.ADMIN, ROLE.MODERATOR)
+  @ResponseMessage(ResponseMessages.USERS_RETRIEVED)
   async findAll(): Promise<UserResponseDto[]> {
     const users = await this.usersService.findAll();
     return users.map(user => 
@@ -40,6 +43,7 @@ export class UsersController {
 
   @Get(':id')
   @Roles(ROLE.ADMIN, ROLE.MODERATOR, ROLE.USER)
+  @ResponseMessage(ResponseMessages.USER_FOUND)
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserResponseDto> {
     const user = await this.usersService.findById(id);
     return plainToClass(UserResponseDto, user, { excludeExtraneousValues: true });
@@ -47,6 +51,7 @@ export class UsersController {
 
   @Patch(':id')
   @Roles(ROLE.ADMIN)
+  @ResponseMessage(ResponseMessages.USER_UPDATED)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -57,6 +62,7 @@ export class UsersController {
 
   @Delete(':id')
   @Roles(ROLE.ADMIN)
+  @ResponseMessage(ResponseMessages.USER_DELETED)
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<{ message: string }> {
     await this.usersService.remove(id);
     return { message: 'User deleted successfully' };

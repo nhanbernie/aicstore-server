@@ -15,6 +15,10 @@ import {
   ApiLogoutAll,
   ApiGetProfile,
 } from '../../common/decorators/swagger.decorator';
+import { 
+  ResponseMessage, 
+  ResponseMessages 
+} from '../../common/decorators/response-message.decorator';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -33,6 +37,7 @@ export class AuthController {
 
   @Post('register')
   @ApiRegister()
+  @ResponseMessage(ResponseMessages.REGISTER_SUCCESS)
   async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
     return this.authService.register(registerDto);
   }
@@ -40,18 +45,21 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @ApiLogin()
+  @ResponseMessage(ResponseMessages.LOGIN_SUCCESS)
   async login(@Request() req, @Body() loginDto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(req.user);
   }
 
   @Post('refresh')
   @ApiRefreshToken()
+  @ResponseMessage(ResponseMessages.TOKEN_REFRESHED)
   async refresh(@Body() refreshTokenDto: RefreshTokenDto): Promise<RefreshResponseDto> {
     return this.authService.refreshTokens(refreshTokenDto.refreshToken);
   }
 
   @Post('logout')
   @ApiLogout()
+  @ResponseMessage(ResponseMessages.LOGOUT_SUCCESS)
   async logout(@Body() refreshTokenDto: RefreshTokenDto): Promise<{ message: string }> {
     return this.authService.logout(refreshTokenDto.refreshToken);
   }
@@ -59,6 +67,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout-all')
   @ApiLogoutAll()
+  @ResponseMessage(ResponseMessages.LOGOUT_SUCCESS)
   async logoutAll(@Request() req): Promise<{ message: string }> {
     return this.authService.logoutAllDevices(req.user.userId);
   }
@@ -66,6 +75,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiGetProfile()
+  @ResponseMessage(ResponseMessages.PROFILE_RETRIEVED)
   getProfile(@Request() req) {
     return req.user;
   }
