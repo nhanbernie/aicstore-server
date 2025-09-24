@@ -11,20 +11,26 @@ COPY package*.json ./
 # Install dependencies (including dev dependencies for build)
 RUN npm ci --only=production=false
 
+# Install NestJS CLI globally for development
+RUN npm install -g @nestjs/cli
+
 # Copy source code
 COPY . .
 
 # Build the application
 RUN npm run build
 
-# Remove dev dependencies to reduce image size
-RUN npm prune --production
+# Remove dev dependencies to reduce image size (skip for development)
+# RUN npm prune --production
 
 # Stage 2: Production runtime
 FROM node:20-alpine AS production
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
+
+# Install NestJS CLI globally
+RUN npm install -g @nestjs/cli
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
