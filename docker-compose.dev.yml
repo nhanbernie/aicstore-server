@@ -1,5 +1,4 @@
 # Docker Compose for Development Environment
-version: '3.9'
 
 services:
   # PostgreSQL Database Service (same as production)
@@ -74,7 +73,7 @@ services:
     container_name: wdp-pgadmin-dev
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@wdp.local
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin123
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:

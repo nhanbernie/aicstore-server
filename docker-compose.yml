@@ -1,5 +1,4 @@
 # Docker Compose v2 for WDP Server with PostgreSQL
-version: '3.9'
 
 services:
   # PostgreSQL Database Service

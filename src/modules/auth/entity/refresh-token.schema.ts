@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { User } from '../../users/schemas/user.schema';
+import { User } from '../../users/entity/user.schema';
 
 @Entity('refresh_tokens')
 export class RefreshToken {

@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { RegisterDto, LoginDto, AuthResponseDto, RefreshResponseDto } from './dto/auth-response.dto';
-import { User } from '../users/schemas/user.schema';
+import { User } from '../users/entity/user.schema';
 import { ROLE } from '../../common/enums/auth.enums';
 
 @Injectable()

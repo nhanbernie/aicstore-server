@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { UsersModule } from '../users/users.module';
-import { RefreshToken } from './schemas/refresh-token.schema';
+import { RefreshToken } from './entity/refresh-token.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 
