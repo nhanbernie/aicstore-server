@@ -7,8 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { RefreshToken } from '../schemas/refresh-token.schema';
-import { User } from '../../users/schemas/user.schema';
+import { RefreshToken } from '../entity/refresh-token.schema';
+import { User } from '../../users/entity/user.schema';
 
 @Injectable()
 export class RefreshTokenService {

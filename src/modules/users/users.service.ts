@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './schemas/user.schema';
+import { User } from './entity/user.schema';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
 @Injectable()

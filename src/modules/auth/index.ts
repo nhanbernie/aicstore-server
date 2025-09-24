@@ -6,5 +6,5 @@ export * from './guards/local-auth.guard';
 export * from './strategies/jwt.strategy';
 export * from './strategies/local.strategy';
 export * from './services/refresh-token.service';
-export * from './schemas/refresh-token.schema';
+export * from './entity/refresh-token.schema';
 export * from './dto/auth-response.dto';
