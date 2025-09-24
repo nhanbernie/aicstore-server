@@ -19,16 +19,13 @@ export class ResponseUtil {
     message: string = 'Request failed',
     errors: any = null,
     statusCode: number = 500,
-    path?: string,
   ): ApiResponse<null> {
     return {
       success: false,
       message,
       data: null,
       errors,
-      timestamp: new Date().toISOString(),
       statusCode,
-      path,
     };
   }
 
@@ -54,44 +51,38 @@ export class ResponseUtil {
 
   static notFound(
     message: string = 'Resource not found',
-    path?: string,
   ): ApiResponse<null> {
-    return this.error(message, { error: 'Not Found' }, 404, path);
+    return this.error(message, { error: 'Not Found' }, 404);
   }
 
   static unauthorized(
     message: string = 'Unauthorized',
-    path?: string,
   ): ApiResponse<null> {
-    return this.error(message, { error: 'Unauthorized' }, 401, path);
+    return this.error(message, { error: 'Unauthorized' }, 401);
   }
 
   static forbidden(
     message: string = 'Forbidden',
-    path?: string,
   ): ApiResponse<null> {
-    return this.error(message, { error: 'Forbidden' }, 403, path);
+    return this.error(message, { error: 'Forbidden' }, 403);
   }
 
   static badRequest(
     message: string = 'Bad Request',
     errors: any = null,
-    path?: string,
   ): ApiResponse<null> {
-    return this.error(message, errors || { error: 'Bad Request' }, 400, path);
+    return this.error(message, errors || { error: 'Bad Request' }, 400);
   }
 
   static conflict(
     message: string = 'Conflict',
-    path?: string,
   ): ApiResponse<null> {
-    return this.error(message, { error: 'Conflict' }, 409, path);
+    return this.error(message, { error: 'Conflict' }, 409);
   }
 
   static validationError(
     validationErrors: string[],
     message: string = 'Validation failed',
-    path?: string,
   ): ApiResponse<null> {
     return this.error(
       message,
@@ -101,7 +92,6 @@ export class ResponseUtil {
         statusCode: 400,
       },
       400,
-      path,
     );
   }
 }

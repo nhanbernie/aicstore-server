@@ -37,8 +37,6 @@ export const ApiCommonResponses = () =>
               statusCode: 400
             }
           },
-          timestamp: { type: 'string', example: '2024-09-24T16:45:00.000Z' },
-          path: { type: 'string', example: '/auth/register' },
           statusCode: { type: 'number', example: 400 }
         }
       }
@@ -55,8 +53,6 @@ export const ApiCommonResponses = () =>
             type: 'object',
             example: { error: 'Internal server error' }
           },
-          timestamp: { type: 'string', example: '2024-09-24T16:45:00.000Z' },
-          path: { type: 'string', example: '/auth/register' },
           statusCode: { type: 'number', example: 500 }
         }
       }
@@ -103,8 +99,6 @@ export const ApiRegister = () =>
             }
           },
           errors: { type: 'null', example: null },
-          timestamp: { type: 'string', example: '2024-09-24T16:45:00.000Z' },
-          path: { type: 'string', example: '/auth/register' },
           statusCode: { type: 'number', example: 201 }
         }
       }
@@ -118,8 +112,6 @@ export const ApiRegister = () =>
           message: { type: 'string', example: 'User with this email already exists' },
           data: { type: 'null', example: null },
           errors: { type: 'object', example: { error: 'Conflict', statusCode: 409 } },
-          timestamp: { type: 'string', example: '2024-09-24T16:45:00.000Z' },
-          path: { type: 'string', example: '/auth/register' },
           statusCode: { type: 'number', example: 409 }
         }
       }
@@ -152,8 +144,6 @@ export const ApiLogin = () =>
             }
           },
           errors: { type: 'null', example: null },
-          timestamp: { type: 'string', example: '2024-09-24T16:45:00.000Z' },
-          path: { type: 'string', example: '/auth/login' },
           statusCode: { type: 'number', example: 200 }
         }
       }
@@ -167,8 +157,6 @@ export const ApiLogin = () =>
           message: { type: 'string', example: 'Invalid credentials' },
           data: { type: 'null', example: null },
           errors: { type: 'object', example: { error: 'Unauthorized', statusCode: 401 } },
-          timestamp: { type: 'string', example: '2024-09-24T16:45:00.000Z' },
-          path: { type: 'string', example: '/auth/login' },
           statusCode: { type: 'number', example: 401 }
         }
       }
