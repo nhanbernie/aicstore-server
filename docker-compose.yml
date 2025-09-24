@@ -1,38 +1,93 @@
+# Docker Compose v2 for WDP Server with PostgreSQL
 version: '3.9'
 
 services:
-  schedoryn:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: wdp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-wdp_server}
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    networks:
+      - wdp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-postgres} -d ${DATABASE_NAME:-wdp_server}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # NestJS API Service
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
-    container_name: schedoryn
+      target: production
+    container_name: wdp-api
     restart: unless-stopped
-    ports:
-      - '${PORT}:${PORT}'
-    volumes:
-      - ./:/usr/src/app
-      - /usr/src/app/node_modules
-
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=${NODE_ENV}
-      - MONGODB_URI=mongodb://mongo:27017/${MONGODB_NAME}
     depends_on:
-      - mongo
-    command: npm run start:dev
-
-  mongo:
-    image: mongo:latest
-    container_name: mongo_container
-    restart: always
-    ports:
-      - '${MONGODB_PORT}:${MONGODB_PORT}'
-    volumes:
-      - mongo-data:/data/db
+      postgres:
+        condition: service_healthy
     environment:
-      MONGO_INITDB_DATABASE: ${MONGODB_NAME}
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      DATABASE_NAME: ${DATABASE_NAME:-wdp_server}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+    ports:
+      - "${PORT:-3000}:3000"
+    networks:
+      - wdp-network
+    volumes:
+      # Mount logs directory for log persistence (optional)
+      - ./logs:/usr/src/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching/sessions (optional - uncomment if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: wdp-redis
+  #   restart: unless-stopped
+  #   command: redis-server --appendonly yes
+  #   volumes:
+  #     - redis_data:/data
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - wdp-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 3
 
 volumes:
-  mongo-data:
+  postgres_data:
+    driver: local
+  # redis_data:
+  #   driver: local
+
+networks:
+  wdp-network:
+    driver: bridge
