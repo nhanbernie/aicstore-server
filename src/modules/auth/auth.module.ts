@@ -11,12 +11,16 @@ import { UsersModule } from '../users/users.module';
 import { RefreshToken } from './entity/refresh-token.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { EmailService } from './services/email.service';
+import { PasswordResetToken } from './entity/password-reset.schema';
+import { PasswordResetService } from './services/password-reset.service';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    TypeOrmModule.forFeature([RefreshToken]),
+    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -27,6 +31,24 @@ import { LocalStrategy } from './strategies/local.strategy';
       }),
       inject: [ConfigService],
     }),
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        transport: {
+          host: configService.get<string>('MAIL_HOST'),
+          port: configService.get<number>('MAIL_PORT'),
+          secure: false,
+          auth: {
+            user: configService.get<string>('MAIL_USER'),
+            pass: configService.get<string>('MAIL_PASS'),
+          },
+        },
+        defaults: {
+          from: `"AICShop" <${configService.get<string>('MAIL_FROM')}>`,
+        },
+      }),
+    }),
   ],
   controllers: [AuthController],
   providers: [
@@ -34,7 +56,9 @@ import { LocalStrategy } from './strategies/local.strategy';
     RefreshTokenService,
     LocalStrategy,
     JwtStrategy,
+    EmailService,
+    PasswordResetService,
   ],
-  exports: [AuthService, JwtStrategy],
+  exports: [AuthService, JwtStrategy, EmailService, PasswordResetService],
 })
 export class AuthModule {}

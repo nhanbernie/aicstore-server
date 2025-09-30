@@ -19,21 +19,24 @@ export const ResponseMessages = {
   UPDATED: 'Cập nhật thành công',
   DELETED: 'Xóa thành công',
   RETRIEVED: 'Lấy dữ liệu thành công',
-  
+
   // Auth messages
   LOGIN_SUCCESS: 'Đăng nhập thành công',
   REGISTER_SUCCESS: 'Đăng ký thành công',
   LOGOUT_SUCCESS: 'Đăng xuất thành công',
   TOKEN_REFRESHED: 'Làm mới token thành công',
   PROFILE_RETRIEVED: 'Lấy thông tin profile thành công',
-  
+  PASSWORD_RESET_EMAIL_SENT: 'Email đặt lại mật khẩu đã được gửi',
+  PASSWORD_RESET_TOKEN_VERIFIED: 'Token đặt lại mật khẩu hợp lệ',
+  PASSWORD_RESET_SUCCESS: 'Mật khẩu đã được đặt lại thành công',
+
   // User messages
   USER_CREATED: 'Tạo người dùng thành công',
   USER_UPDATED: 'Cập nhật người dùng thành công',
   USER_DELETED: 'Xóa người dùng thành công',
   USER_FOUND: 'Tìm thấy người dùng',
   USERS_RETRIEVED: 'Lấy danh sách người dùng thành công',
-  
+
   // Error messages
   VALIDATION_FAILED: 'Dữ liệu không hợp lệ',
   UNAUTHORIZED: 'Không có quyền truy cập',
