@@ -32,7 +32,7 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(ROLE.ADMIN, ROLE.MODERATOR)
+  @Roles(ROLE.ADMIN, ROLE.VENDOR)
   @ResponseMessage(ResponseMessages.USERS_RETRIEVED)
   async findAll(): Promise<UserResponseDto[]> {
     const users = await this.usersService.findAll();
@@ -42,7 +42,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Roles(ROLE.ADMIN, ROLE.MODERATOR, ROLE.USER)
+  @Roles(ROLE.ADMIN, ROLE.VENDOR, ROLE.USER)
   @ResponseMessage(ResponseMessages.USER_FOUND)
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserResponseDto> {
     const user = await this.usersService.findById(id);
