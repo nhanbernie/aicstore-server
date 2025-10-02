@@ -1,7 +1,7 @@
 export const ROLE = {
   USER: 'user',
   ADMIN: 'admin',
-  MODERATOR: 'moderator',
+  VENDOR: 'vendor',
 };
 
 export enum MESSAGE_ROLE {

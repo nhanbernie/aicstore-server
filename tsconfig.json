@@ -20,6 +20,27 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@/*": ["src/*"],
+      "@common/*": ["src/common/*"],
+      "@modules/*": ["src/modules/*"],
+      "@config/*": ["src/config/*"],
+      "@database/*": ["src/database/*"],
+      "@auth/*": ["src/modules/auth/*"],
+      "@users/*": ["src/modules/users/*"],
+      "@vendors/*": ["src/modules/vendors/*"],
+      "@products/*": ["src/modules/products/*"],
+      "@ai/*": ["src/modules/ai/*"],
+      "@decorators/*": ["src/common/decorators/*"],
+      "@enums/*": ["src/common/enums/*"],
+      "@filters/*": ["src/common/filters/*"],
+      "@guards/*": ["src/common/guards/*"],
+      "@interceptors/*": ["src/common/interceptors/*"],
+      "@interfaces/*": ["src/common/interfaces/*"],
+      "@middlewares/*": ["src/common/middlewares/*"],
+      "@models/*": ["src/common/models/*"],
+      "@utils/*": ["src/common/utils/*"]
+    }
   }
 }

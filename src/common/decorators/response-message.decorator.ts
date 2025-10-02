@@ -37,6 +37,16 @@ export const ResponseMessages = {
   USER_FOUND: 'Tìm thấy người dùng',
   USERS_RETRIEVED: 'Lấy danh sách người dùng thành công',
 
+<<<<<<< HEAD
+=======
+  // Vendor messages
+  VENDOR_CREATED: 'Tạo vendor thành công',
+  VENDOR_UPDATED: 'Cập nhật vendor thành công',
+  VENDOR_DELETED: 'Xóa vendor thành công',
+  VENDOR_FOUND: 'Tìm thấy vendor',
+  VENDORS_RETRIEVED: 'Lấy danh sách vendor thành công',
+  
+>>>>>>> 4676bf8128b3dc4c40a1a49c0c7827b230c25a3f
   // Error messages
   VALIDATION_FAILED: 'Dữ liệu không hợp lệ',
   UNAUTHORIZED: 'Không có quyền truy cập',
