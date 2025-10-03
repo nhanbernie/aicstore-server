@@ -6,6 +6,7 @@ import {
   Request,
   Get,
   Query,
+  Res,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
@@ -18,6 +19,8 @@ import {
   ApiForgotPassword,
   ApiVerifyResetToken,
   ApiResetPassword,
+  ApiGoogleLogin,
+  ApiGoogleCallback,
 } from '../../common/decorators/swagger.decorator';
 import {
   ResponseMessage,
@@ -34,8 +37,13 @@ import {
   RefreshResponseDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  ExchangeTokenDto,
 } from './dto/auth-response.dto';
 import { PasswordResetService } from './services/password-reset.service';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import type { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { AuthCodeService } from './services/auth-code.service';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -43,6 +51,8 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly authCodeService: AuthCodeService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('register')
@@ -119,5 +129,30 @@ export class AuthController {
       body.token,
       body.newPassword,
     );
+  }
+
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  @ApiGoogleLogin()
+  async googleAuth() {}
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @ApiGoogleCallback()
+  async googleAuthRedirect(@Request() req, @Res() res: Response) {
+    const user = req.user;
+    const redirectUri = `${this.configService.get<string>('CLIENT_URL') || 'http://localhost:4050'}/login-success`;
+    const code = await this.authCodeService.oAuthLogin(user.email, redirectUri);
+
+    res.redirect(
+      `${this.configService.get<string>('CLIENT_URL') || 'http://localhost:4050'}/login-success?code=${code}`,
+    );
+  }
+
+  // Route dùng để exchange auth code lấy auth response dto
+  @Post('exchange/code')
+  async exchangeCode(@Body() body: ExchangeTokenDto): Promise<AuthResponseDto> {
+    console.log('body: ', body);
+    return this.authCodeService.validateAuthCode(body.authCode);
   }
 }

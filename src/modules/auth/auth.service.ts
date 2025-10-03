@@ -1,13 +1,13 @@
-import {
-  Injectable,
-  ConflictException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { RefreshTokenService } from './services/refresh-token.service';
-import { RegisterDto, LoginDto, AuthResponseDto, RefreshResponseDto } from './dto/auth-response.dto';
+import {
+  RegisterDto,
+  AuthResponseDto,
+  RefreshResponseDto,
+} from './dto/auth-response.dto';
 import { User } from '../users/entity/user.schema';
 import { ROLE } from '../../common/enums/auth.enums';
 
@@ -35,7 +35,8 @@ export class AuthService {
 
     // Generate tokens
     const { accessToken } = await this.generateAccessToken(user);
-    const refreshTokenEntity = await this.refreshTokenService.generateRefreshToken(user);
+    const refreshTokenEntity =
+      await this.refreshTokenService.generateRefreshToken(user);
 
     return {
       accessToken,
@@ -50,7 +51,8 @@ export class AuthService {
 
   async login(user: User): Promise<AuthResponseDto> {
     const { accessToken } = await this.generateAccessToken(user);
-    const refreshTokenEntity = await this.refreshTokenService.generateRefreshToken(user);
+    const refreshTokenEntity =
+      await this.refreshTokenService.generateRefreshToken(user);
 
     return {
       accessToken,
@@ -65,18 +67,20 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
-    if (user && await user.validatePassword(password)) {
+    if (user && (await user.validatePassword(password))) {
       return user;
     }
     return null;
   }
 
   async refreshTokens(refreshToken: string): Promise<RefreshResponseDto> {
-    const user = await this.refreshTokenService.verifyRefreshToken(refreshToken);
-    
+    const user =
+      await this.refreshTokenService.verifyRefreshToken(refreshToken);
+
     // Generate new tokens
     const { accessToken } = await this.generateAccessToken(user);
-    const newRefreshTokenEntity = await this.refreshTokenService.generateRefreshToken(user);
+    const newRefreshTokenEntity =
+      await this.refreshTokenService.generateRefreshToken(user);
 
     return {
       accessToken,
@@ -99,7 +103,7 @@ export class AuthService {
     return { message: 'Logged out from all devices successfully' };
   }
 
-  private async generateAccessToken(user: User): Promise<{ accessToken: string }> {
+  async generateAccessToken(user: User): Promise<{ accessToken: string }> {
     const payload = {
       sub: user.id,
       email: user.email,

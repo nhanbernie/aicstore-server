@@ -309,6 +309,82 @@ export const ApiResetPassword = () =>
     ApiCommonResponses(),
   );
 
+// Google auth specific decorators
+export const ApiGoogleLogin = () =>
+  applyDecorators(
+    ApiPublicOperation(
+      'Google OAuth2 login',
+      'Redirect user to Google login consent screen',
+    ),
+    ApiOkResponse({
+      description: 'Redirect to Google OAuth consent screen',
+    }),
+    ApiUnauthorizedResponse({
+      description: 'Google authentication failed',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'Google authentication failed' },
+          data: { type: 'null', example: null },
+          errors: {
+            type: 'object',
+            example: { error: 'Unauthorized', statusCode: 401 },
+          },
+          statusCode: { type: 'number', example: 401 },
+        },
+      },
+    }),
+  );
+
+export const ApiGoogleCallback = () =>
+  applyDecorators(
+    ApiPublicOperation(
+      'Google OAuth2 callback',
+      'Google redirects here after login. The API exchanges Google profile for JWT tokens.',
+    ),
+    ApiOkResponse({
+      description: 'Google login successful, returns JWT tokens',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Google login successful' },
+          data: {
+            type: 'object',
+            properties: {
+              accessToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
+              refreshToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
+              user: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    example: '123e4567-e89b-12d3-a456-426614174000',
+                  },
+                  email: { type: 'string', example: 'user@gmail.com' },
+                  roles: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    example: ['user'],
+                  },
+                },
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+  );
+
 // Products specific decorators
 export const ApiProductListing = () =>
   applyDecorators(

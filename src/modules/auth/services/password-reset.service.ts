@@ -29,8 +29,11 @@ export class PasswordResetService {
       throw new NotFoundException('User not found');
     }
 
-    // Xóa token cũ (nếu có)
-    await this.resetTokenRepository.delete({ userId: user.id });
+    // vô hiệu hóa token cũ (nếu có)
+    await this.resetTokenRepository.update(
+      { userId: user.id, isUsed: false },
+      { isUsed: true },
+    );
 
     // Tạo token mới
     const token = randomBytes(32).toString('hex');
@@ -41,6 +44,7 @@ export class PasswordResetService {
       token,
       userId: user.id,
       expiresAt,
+      isUsed: false,
     });
     await this.resetTokenRepository.save(resetTokenEntity);
 

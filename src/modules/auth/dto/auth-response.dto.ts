@@ -110,3 +110,13 @@ export class RefreshResponseDto {
   @Expose()
   refreshToken: string;
 }
+
+export class ExchangeTokenDto {
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'Code to exchange to get authentication information',
+  })
+  @Expose()
+  @IsString()
+  authCode: string;
+}

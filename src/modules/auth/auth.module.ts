@@ -15,12 +15,15 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { EmailService } from './services/email.service';
 import { PasswordResetToken } from './entity/password-reset.schema';
 import { PasswordResetService } from './services/password-reset.service';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { AuthCode } from './entity/auth-code.schema';
+import { AuthCodeService } from './services/auth-code.service';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken]),
+    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken, AuthCode]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -56,8 +59,10 @@ import { PasswordResetService } from './services/password-reset.service';
     RefreshTokenService,
     LocalStrategy,
     JwtStrategy,
+    GoogleStrategy,
     EmailService,
     PasswordResetService,
+    AuthCodeService,
   ],
   exports: [AuthService, JwtStrategy, EmailService, PasswordResetService],
 })

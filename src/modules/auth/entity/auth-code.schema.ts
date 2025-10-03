@@ -1,20 +1,22 @@
+import { User } from '@/modules/users';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
   CreateDateColumn,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from '../../users/entity/user.schema';
 
-@Entity('password_reset_tokens')
-export class PasswordResetToken {
+@Entity('auth_codes')
+export class AuthCode {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  token: string;
+  @Column({
+    unique: true,
+  })
+  code: string;
 
   @Column()
   userId: string;
@@ -23,14 +25,17 @@ export class PasswordResetToken {
   @JoinColumn({ name: 'userId' })
   user: User;
 
+  @Column()
+  redirectUri: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
-  expiresAt: Date;
-
   @Column({ default: false })
   isUsed: boolean;
+
+  @Column()
+  expiresAt: Date;
 
   isExpired(): boolean {
     return new Date() > this.expiresAt;

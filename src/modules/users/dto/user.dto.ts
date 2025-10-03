@@ -1,4 +1,10 @@
-import { IsEmail, IsString, MinLength, IsArray, IsOptional } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  IsArray,
+  IsOptional,
+} from 'class-validator';
 import { Exclude, Expose } from 'class-transformer';
 
 export class CreateUserDto {
@@ -6,8 +12,9 @@ export class CreateUserDto {
   email: string;
 
   @IsString()
+  @IsOptional()
   @MinLength(6)
-  password: string;
+  password?: string;
 
   @IsArray()
   @IsOptional()
