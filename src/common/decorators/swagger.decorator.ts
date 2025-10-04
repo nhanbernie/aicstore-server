@@ -21,7 +21,7 @@ export const ApiAuth = () =>
 
 export const ApiCommonResponses = () =>
   applyDecorators(
-    ApiBadRequestResponse({ 
+    ApiBadRequestResponse({
       description: 'Bad Request',
       schema: {
         type: 'object',
@@ -32,16 +32,19 @@ export const ApiCommonResponses = () =>
           errors: {
             type: 'object',
             example: {
-              validation: ['email must be a valid email', 'password must be longer than 6 characters'],
+              validation: [
+                'email must be a valid email',
+                'password must be longer than 6 characters',
+              ],
               error: 'Bad Request',
-              statusCode: 400
-            }
+              statusCode: 400,
+            },
           },
-          statusCode: { type: 'number', example: 400 }
-        }
-      }
+          statusCode: { type: 'number', example: 400 },
+        },
+      },
     }),
-    ApiInternalServerErrorResponse({ 
+    ApiInternalServerErrorResponse({
       description: 'Internal Server Error',
       schema: {
         type: 'object',
@@ -51,11 +54,11 @@ export const ApiCommonResponses = () =>
           data: { type: 'null', example: null },
           errors: {
             type: 'object',
-            example: { error: 'Internal server error' }
+            example: { error: 'Internal server error' },
           },
-          statusCode: { type: 'number', example: 500 }
-        }
-      }
+          statusCode: { type: 'number', example: 500 },
+        },
+      },
     }),
   );
 
@@ -67,16 +70,13 @@ export const ApiAuthOperation = (summary: string, description?: string) =>
   );
 
 export const ApiPublicOperation = (summary: string, description?: string) =>
-  applyDecorators(
-    ApiOperation({ summary, description }),
-    ApiCommonResponses(),
-  );
+  applyDecorators(ApiOperation({ summary, description }), ApiCommonResponses());
 
 // Auth specific decorators
 export const ApiRegister = () =>
   applyDecorators(
     ApiPublicOperation('Register new user', 'Create a new user account'),
-    ApiCreatedResponse({ 
+    ApiCreatedResponse({
       description: 'User registered successfully',
       schema: {
         type: 'object',
@@ -86,22 +86,35 @@ export const ApiRegister = () =>
           data: {
             type: 'object',
             properties: {
-              accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-              refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+              accessToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
+              refreshToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
               user: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+                  id: {
+                    type: 'string',
+                    example: '123e4567-e89b-12d3-a456-426614174000',
+                  },
                   email: { type: 'string', example: 'user@example.com' },
-                  roles: { type: 'array', items: { type: 'string' }, example: ['user'] }
-                }
-              }
-            }
+                  roles: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    example: ['user'],
+                  },
+                },
+              },
+            },
           },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 201 }
-        }
-      }
+          statusCode: { type: 'number', example: 201 },
+        },
+      },
     }),
     ApiConflictResponse({
       description: 'User already exists',
@@ -109,19 +122,25 @@ export const ApiRegister = () =>
         type: 'object',
         properties: {
           success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'User with this email already exists' },
+          message: {
+            type: 'string',
+            example: 'User with this email already exists',
+          },
           data: { type: 'null', example: null },
-          errors: { type: 'object', example: { error: 'Conflict', statusCode: 409 } },
-          statusCode: { type: 'number', example: 409 }
-        }
-      }
+          errors: {
+            type: 'object',
+            example: { error: 'Conflict', statusCode: 409 },
+          },
+          statusCode: { type: 'number', example: 409 },
+        },
+      },
     }),
   );
 
 export const ApiLogin = () =>
   applyDecorators(
     ApiPublicOperation('Login user', 'Authenticate user and return tokens'),
-    ApiOkResponse({ 
+    ApiOkResponse({
       description: 'Login successful',
       schema: {
         type: 'object',
@@ -131,24 +150,37 @@ export const ApiLogin = () =>
           data: {
             type: 'object',
             properties: {
-              accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-              refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+              accessToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
+              refreshToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
               user: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+                  id: {
+                    type: 'string',
+                    example: '123e4567-e89b-12d3-a456-426614174000',
+                  },
                   email: { type: 'string', example: 'user@example.com' },
-                  roles: { type: 'array', items: { type: 'string' }, example: ['user'] }
-                }
-              }
-            }
+                  roles: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    example: ['user'],
+                  },
+                },
+              },
+            },
           },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 200 }
-        }
-      }
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
     }),
-    ApiUnauthorizedResponse({ 
+    ApiUnauthorizedResponse({
       description: 'Invalid credentials',
       schema: {
         type: 'object',
@@ -156,16 +188,22 @@ export const ApiLogin = () =>
           success: { type: 'boolean', example: false },
           message: { type: 'string', example: 'Invalid credentials' },
           data: { type: 'null', example: null },
-          errors: { type: 'object', example: { error: 'Unauthorized', statusCode: 401 } },
-          statusCode: { type: 'number', example: 401 }
-        }
-      }
+          errors: {
+            type: 'object',
+            example: { error: 'Unauthorized', statusCode: 401 },
+          },
+          statusCode: { type: 'number', example: 401 },
+        },
+      },
     }),
   );
 
 export const ApiRefreshToken = () =>
   applyDecorators(
-    ApiPublicOperation('Refresh access token', 'Get new access token using refresh token'),
+    ApiPublicOperation(
+      'Refresh access token',
+      'Get new access token using refresh token',
+    ),
     ApiOkResponse({ description: 'Token refreshed successfully' }),
     ApiUnauthorizedResponse({ description: 'Invalid refresh token' }),
   );
@@ -178,14 +216,97 @@ export const ApiLogout = () =>
 
 export const ApiLogoutAll = () =>
   applyDecorators(
-    ApiAuthOperation('Logout from all devices', 'Invalidate all refresh tokens for user'),
+    ApiAuthOperation(
+      'Logout from all devices',
+      'Invalidate all refresh tokens for user',
+    ),
     ApiOkResponse({ description: 'Logged out from all devices' }),
   );
 
 export const ApiGetProfile = () =>
   applyDecorators(
-    ApiAuthOperation('Get current user profile', 'Retrieve authenticated user information'),
+    ApiAuthOperation(
+      'Get current user profile',
+      'Retrieve authenticated user information',
+    ),
     ApiOkResponse({ description: 'User profile retrieved' }),
+  );
+
+export const ApiForgotPassword = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Request password reset email',
+      description: 'Send a reset link to user email',
+    }),
+    ApiCreatedResponse({
+      description: 'Password reset email sent',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Password reset email has been sent',
+          },
+          data: { type: 'null', example: null },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 201 },
+        },
+      },
+    }),
+    ApiCommonResponses(),
+  );
+
+export const ApiVerifyResetToken = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Verify reset token',
+      description: 'Check if the reset token is valid',
+    }),
+    ApiOkResponse({
+      description: 'Token is valid, returns user info',
+      schema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            example: '123e4567-e89b-12d3-a456-426614174000',
+          },
+          email: { type: 'string', example: 'user@example.com' },
+          roles: {
+            type: 'array',
+            items: { type: 'string' },
+            example: ['user'],
+          },
+        },
+      },
+    }),
+    ApiCommonResponses(),
+  );
+
+export const ApiResetPassword = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Reset password',
+      description: 'Set new password using valid reset token',
+    }),
+    ApiOkResponse({
+      description: 'Password reset successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Password has been reset successfully',
+          },
+          data: { type: 'null', example: null },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiCommonResponses(),
   );
 
 // Products specific decorators
@@ -198,6 +319,7 @@ export const ApiProductListing = () =>
         type: 'object',
         properties: {
           success: { type: 'boolean', example: true },
+
           message: { type: 'string', example: 'Lấy dữ liệu thành công' },
           data: {
             type: 'object',
