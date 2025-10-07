@@ -398,6 +398,7 @@ export const ApiProductListing = () =>
         type: 'object',
         properties: {
           success: { type: 'boolean', example: true },
+
           message: { type: 'string', example: 'Lấy dữ liệu thành công' },
           data: {
             type: 'object',
