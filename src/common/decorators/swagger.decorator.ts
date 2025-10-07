@@ -11,7 +11,6 @@ import {
   ApiInternalServerErrorResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { ApiResponseDto } from '../interfaces/api-response.interface';
 
 export const ApiAuth = () =>
   applyDecorators(
@@ -312,8 +311,11 @@ export const ApiResetPassword = () =>
 // Products specific decorators
 export const ApiProductListing = () =>
   applyDecorators(
-    ApiPublicOperation('Get products listing', 'Retrieve paginated list of products with filtering and facets'),
-    ApiOkResponse({ 
+    ApiPublicOperation(
+      'Get products listing',
+      'Retrieve paginated list of products with filtering and facets',
+    ),
+    ApiOkResponse({
       description: 'Products retrieved successfully',
       schema: {
         type: 'object',
@@ -330,9 +332,18 @@ export const ApiProductListing = () =>
                   type: 'object',
                   properties: {
                     id: { type: 'string', example: 'p-123' },
-                    name: { type: 'string', example: 'Máy khoan búa Bosch X200' },
-                    slug: { type: 'string', example: 'may-khoan-bua-bosch-x200' },
-                    thumbnail: { type: 'string', example: 'https://cdn.example.com/thumb.jpg' },
+                    name: {
+                      type: 'string',
+                      example: 'Máy khoan búa Bosch X200',
+                    },
+                    slug: {
+                      type: 'string',
+                      example: 'may-khoan-bua-bosch-x200',
+                    },
+                    thumbnail: {
+                      type: 'string',
+                      example: 'https://cdn.example.com/thumb.jpg',
+                    },
                     price: { type: 'number', example: 1499000 },
                     salePrice: { type: 'number', example: 1299000 },
                     currency: { type: 'string', example: 'VND' },
@@ -340,13 +351,17 @@ export const ApiProductListing = () =>
                       type: 'object',
                       properties: {
                         quantity: { type: 'number', example: 120 },
-                        unit: { type: 'string', example: 'cái' }
-                      }
+                        unit: { type: 'string', example: 'cái' },
+                      },
                     },
-                    badges: { type: 'array', items: { type: 'string' }, example: ['sale', 'bestseller'] },
-                    brand: { type: 'string', example: 'Bosch' }
-                  }
-                }
+                    badges: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      example: ['sale', 'bestseller'],
+                    },
+                    brand: { type: 'string', example: 'Bosch' },
+                  },
+                },
               },
               pagination: {
                 type: 'object',
@@ -354,28 +369,34 @@ export const ApiProductListing = () =>
                   page: { type: 'number', example: 1 },
                   limit: { type: 'number', example: 24 },
                   total: { type: 'number', example: 1287 },
-                  totalPages: { type: 'number', example: 54 }
-                }
-              }
-            }
+                  totalPages: { type: 'number', example: 54 },
+                },
+              },
+            },
           },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 200 }
-        }
-      }
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
     }),
   );
 
 export const ApiProductDetail = () =>
   applyDecorators(
-    ApiPublicOperation('Get product detail', 'Retrieve detailed information about a specific product'),
-    ApiOkResponse({ 
+    ApiPublicOperation(
+      'Get product detail',
+      'Retrieve detailed information about a specific product',
+    ),
+    ApiOkResponse({
       description: 'Product detail retrieved successfully',
       schema: {
         type: 'object',
         properties: {
           success: { type: 'boolean', example: true },
-          message: { type: 'string', example: 'Lấy chi tiết sản phẩm thành công' },
+          message: {
+            type: 'string',
+            example: 'Lấy chi tiết sản phẩm thành công',
+          },
           data: {
             type: 'object',
             properties: {
@@ -385,13 +406,16 @@ export const ApiProductDetail = () =>
               price: { type: 'number', example: 1499000 },
               salePrice: { type: 'number', example: 1299000 },
               currency: { type: 'string', example: 'VND' },
-              description: { type: 'string', example: '<p>Máy khoan búa chuyên nghiệp...</p>' },
+              description: {
+                type: 'string',
+                example: '<p>Máy khoan búa chuyên nghiệp...</p>',
+              },
               specs: {
                 type: 'object',
                 example: {
                   power: { value: 800, unit: 'W' },
-                  voltage: { value: 220, unit: 'V' }
-                }
+                  voltage: { value: 220, unit: 'V' },
+                },
               },
               images: {
                 type: 'array',
@@ -399,10 +423,13 @@ export const ApiProductDetail = () =>
                   type: 'object',
                   properties: {
                     id: { type: 'string', example: 'img-1' },
-                    url: { type: 'string', example: 'https://cdn.example.com/1.jpg' },
-                    position: { type: 'number', example: 1 }
-                  }
-                }
+                    url: {
+                      type: 'string',
+                      example: 'https://cdn.example.com/1.jpg',
+                    },
+                    position: { type: 'number', example: 1 },
+                  },
+                },
               },
               variants: {
                 type: 'array',
@@ -412,16 +439,16 @@ export const ApiProductDetail = () =>
                     id: { type: 'string', example: 'var-1' },
                     sku: { type: 'string', example: 'BOSCH-X200-13MM' },
                     price: { type: 'number', example: 1299000 },
-                    stockQty: { type: 'number', example: 50 }
-                  }
-                }
-              }
-            }
+                    stockQty: { type: 'number', example: 50 },
+                  },
+                },
+              },
+            },
           },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 200 }
-        }
-      }
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
     }),
     ApiNotFoundResponse({
       description: 'Product not found',
@@ -431,24 +458,33 @@ export const ApiProductDetail = () =>
           success: { type: 'boolean', example: false },
           message: { type: 'string', example: 'Không tìm thấy sản phẩm' },
           data: { type: 'null', example: null },
-          errors: { type: 'object', example: { error: 'Not Found', statusCode: 404 } },
-          statusCode: { type: 'number', example: 404 }
-        }
-      }
+          errors: {
+            type: 'object',
+            example: { error: 'Not Found', statusCode: 404 },
+          },
+          statusCode: { type: 'number', example: 404 },
+        },
+      },
     }),
   );
 
 export const ApiProductBySlug = () =>
   applyDecorators(
-    ApiPublicOperation('Get product by slug', 'Retrieve product detail using SEO-friendly slug'),
+    ApiPublicOperation(
+      'Get product by slug',
+      'Retrieve product detail using SEO-friendly slug',
+    ),
     ApiOkResponse({ description: 'Product retrieved successfully' }),
     ApiNotFoundResponse({ description: 'Product not found' }),
   );
 
 export const ApiCreateProduct = () =>
   applyDecorators(
-    ApiAuthOperation('Create new product', 'Create a new product with options and variants'),
-    ApiCreatedResponse({ 
+    ApiAuthOperation(
+      'Create new product',
+      'Create a new product with options and variants',
+    ),
+    ApiCreatedResponse({
       description: 'Product created successfully',
       schema: {
         type: 'object',
@@ -458,13 +494,13 @@ export const ApiCreateProduct = () =>
           data: {
             type: 'object',
             properties: {
-              id: { type: 'string', example: 'p-xyz-789' }
-            }
+              id: { type: 'string', example: 'p-xyz-789' },
+            },
           },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 201 }
-        }
-      }
+          statusCode: { type: 'number', example: 201 },
+        },
+      },
     }),
     ApiConflictResponse({
       description: 'Slug or SKU already exists',
@@ -474,10 +510,13 @@ export const ApiCreateProduct = () =>
           success: { type: 'boolean', example: false },
           message: { type: 'string', example: 'Slug đã tồn tại' },
           data: { type: 'null', example: null },
-          errors: { type: 'object', example: { error: 'Conflict', statusCode: 409 } },
-          statusCode: { type: 'number', example: 409 }
-        }
-      }
+          errors: {
+            type: 'object',
+            example: { error: 'Conflict', statusCode: 409 },
+          },
+          statusCode: { type: 'number', example: 409 },
+        },
+      },
     }),
     ApiForbiddenResponse({
       description: 'Cannot create product for other vendor',
@@ -485,19 +524,25 @@ export const ApiCreateProduct = () =>
         type: 'object',
         properties: {
           success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'Bạn chỉ có thể tạo sản phẩm cho vendor của mình' },
+          message: {
+            type: 'string',
+            example: 'Bạn chỉ có thể tạo sản phẩm cho vendor của mình',
+          },
           data: { type: 'null', example: null },
-          errors: { type: 'object', example: { error: 'Forbidden', statusCode: 403 } },
-          statusCode: { type: 'number', example: 403 }
-        }
-      }
+          errors: {
+            type: 'object',
+            example: { error: 'Forbidden', statusCode: 403 },
+          },
+          statusCode: { type: 'number', example: 403 },
+        },
+      },
     }),
   );
 
 export const ApiUpdateProduct = () =>
   applyDecorators(
     ApiAuthOperation('Update product', 'Update existing product information'),
-    ApiOkResponse({ 
+    ApiOkResponse({
       description: 'Product updated successfully',
       schema: {
         type: 'object',
@@ -507,22 +552,27 @@ export const ApiUpdateProduct = () =>
           data: {
             type: 'object',
             properties: {
-              id: { type: 'string', example: 'p-xyz-789' }
-            }
+              id: { type: 'string', example: 'p-xyz-789' },
+            },
           },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 200 }
-        }
-      }
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
     }),
     ApiNotFoundResponse({ description: 'Product not found' }),
-    ApiForbiddenResponse({ description: 'Cannot update other vendor\'s product' }),
+    ApiForbiddenResponse({
+      description: "Cannot update other vendor's product",
+    }),
   );
 
 export const ApiDeleteProduct = () =>
   applyDecorators(
-    ApiAuthOperation('Delete product', 'Soft delete a product (set isActive to false)'),
-    ApiOkResponse({ 
+    ApiAuthOperation(
+      'Delete product',
+      'Soft delete a product (set isActive to false)',
+    ),
+    ApiOkResponse({
       description: 'Product deleted successfully',
       schema: {
         type: 'object',
@@ -531,24 +581,32 @@ export const ApiDeleteProduct = () =>
           message: { type: 'string', example: 'Xóa sản phẩm thành công' },
           data: { type: 'null', example: null },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 200 }
-        }
-      }
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
     }),
     ApiNotFoundResponse({ description: 'Product not found' }),
-    ApiForbiddenResponse({ description: 'Cannot delete other vendor\'s product' }),
+    ApiForbiddenResponse({
+      description: "Cannot delete other vendor's product",
+    }),
   );
 
 export const ApiGetVariants = () =>
   applyDecorators(
-    ApiPublicOperation('Get product variants', 'Retrieve all variants of a specific product'),
-    ApiOkResponse({ 
+    ApiPublicOperation(
+      'Get product variants',
+      'Retrieve all variants of a specific product',
+    ),
+    ApiOkResponse({
       description: 'Variants retrieved successfully',
       schema: {
         type: 'object',
         properties: {
           success: { type: 'boolean', example: true },
-          message: { type: 'string', example: 'Lấy danh sách variants thành công' },
+          message: {
+            type: 'string',
+            example: 'Lấy danh sách variants thành công',
+          },
           data: {
             type: 'array',
             items: {
@@ -560,14 +618,123 @@ export const ApiGetVariants = () =>
                 stockQty: { type: 'number', example: 5000 },
                 options: {
                   type: 'object',
-                  example: { size: 'M8', length: '50mm' }
-                }
-              }
-            }
+                  example: { size: 'M8', length: '50mm' },
+                },
+              },
+            },
           },
           errors: { type: 'null', example: null },
-          statusCode: { type: 'number', example: 200 }
-        }
-      }
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+  );
+
+export const ApiCreatePayment = () =>
+  applyDecorators(
+    ApiPublicOperation('Create a new payment', 'Send payment request to PayOS'),
+    ApiCreatedResponse({
+      description: 'Payment created successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Resource created successfully' },
+          data: {
+            type: 'object',
+            example: {
+              paymentId: 'pay_1234567890',
+              paymentUrl: 'https://payos.vn/checkout/123456',
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 201 },
+        },
+      },
+    }),
+    ApiBadRequestResponse({
+      description: 'Invalid payment data',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'Validation failed' },
+          data: { type: 'null', example: null },
+          errors: {
+            type: 'object',
+            example: {
+              validation: [
+                'amount must be greater than 0',
+                'orderId is required',
+              ],
+              error: 'Bad Request',
+              statusCode: 400,
+            },
+          },
+          statusCode: { type: 'number', example: 400 },
+        },
+      },
+    }),
+    ApiInternalServerErrorResponse({
+      description: 'Internal server error',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'Internal server error' },
+          data: { type: 'null', example: null },
+          errors: {
+            type: 'object',
+            example: { error: 'Internal server error' },
+          },
+          statusCode: { type: 'number', example: 500 },
+        },
+      },
+    }),
+  );
+
+export const ApiPayosWebhook = () =>
+  applyDecorators(
+    ApiPublicOperation('PayOS Webhook', 'Receive PayOS payment callback'),
+    ApiOkResponse({
+      description: 'Webhook received successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          code: { type: 'string', example: 'SUCCESS' },
+        },
+      },
+    }),
+    ApiBadRequestResponse({
+      description: 'Invalid webhook payload',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'Validation failed' },
+          data: { type: 'null', example: null },
+          errors: {
+            type: 'object',
+            example: { error: 'Bad Request', statusCode: 400 },
+          },
+          statusCode: { type: 'number', example: 400 },
+        },
+      },
+    }),
+    ApiInternalServerErrorResponse({
+      description: 'Internal server error',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'Internal server error' },
+          data: { type: 'null', example: null },
+          errors: {
+            type: 'object',
+            example: { error: 'Internal server error' },
+          },
+          statusCode: { type: 'number', example: 500 },
+        },
+      },
     }),
   );
