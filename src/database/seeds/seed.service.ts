@@ -4,10 +4,13 @@ import { Repository } from 'typeorm';
 import { User } from '@users/entity/user.schema';
 import { Vendor } from '@vendors/entity/vendor.schema';
 import { Category, Product, ProductImage, ProductOption, ProductOptionValue, ProductVariant, ProductVariantOptionValue } from '@products/entities';
+import { Order } from '@modules/orders/entities/order.entity';
+import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import { categoriesData } from './data/categories.data';
 import { usersData } from './data/users.data';
 import { vendorsData } from './data/vendors.data';
 import { productsData } from './data/products.data';
+import { ordersData } from './data/orders.data';
 
 @Injectable()
 export class SeedService {
@@ -32,6 +35,10 @@ export class SeedService {
     private readonly productVariantRepository: Repository<ProductVariant>,
     @InjectRepository(ProductVariantOptionValue)
     private readonly productVariantOptionValueRepository: Repository<ProductVariantOptionValue>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepository: Repository<OrderItem>,
   ) {}
 
   async seedAll(): Promise<void> {
@@ -49,6 +56,7 @@ export class SeedService {
       await this.seedVendors();
       await this.seedCategories();
       await this.seedProducts();
+      await this.seedOrders();
 
       this.logger.log('Database seeding completed successfully!');
     } catch (error) {
@@ -67,6 +75,8 @@ export class SeedService {
       await queryRunner.query('SET session_replication_role = replica;');
       
       // Clear tables in reverse order
+      await queryRunner.query('TRUNCATE TABLE "order_items" CASCADE;');
+      await queryRunner.query('TRUNCATE TABLE "orders" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "product_variant_option_values" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "product_variants" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "product_option_values" CASCADE;');
@@ -253,5 +263,54 @@ export class SeedService {
         }
       }
     }
+  }
+
+  private async seedOrders(): Promise<void> {
+    this.logger.log('Seeding orders...');
+
+    // Get first user to assign orders to
+    const users = await this.userRepository.find({ take: 1 });
+    if (users.length === 0) {
+      this.logger.warn('No users found. Skipping order seeding.');
+      return;
+    }
+
+    const userId = users[0].id;
+
+    for (const orderData of ordersData) {
+      // Create order (exclude items and null values)
+      const { items, ...orderFields } = orderData;
+      
+      const order = this.orderRepository.create({
+        ...orderFields,
+        userId,
+        trackingNumber: orderFields.trackingNumber || undefined,
+        estimatedDelivery: orderFields.estimatedDelivery || undefined,
+        actualDelivery: orderFields.actualDelivery || undefined,
+        notes: orderFields.notes || undefined,
+        customerNotes: orderFields.customerNotes || undefined,
+      });
+
+      const savedOrder = await this.orderRepository.save(order);
+      this.logger.log(`Created order: ${orderData.orderNumber}`);
+
+      // Create order items
+      for (const itemData of items) {
+        const orderItem = this.orderItemRepository.create({
+          orderId: savedOrder.id,
+          productName: itemData.productName,
+          variantName: itemData.variantName,
+          quantity: itemData.quantity,
+          unitPrice: itemData.unitPrice,
+          totalPrice: itemData.totalPrice,
+          sku: itemData.sku,
+        });
+
+        await this.orderItemRepository.save(orderItem);
+        this.logger.log(`  - Added item: ${itemData.productName}`);
+      }
+    }
+
+    this.logger.log(`Seeded ${ordersData.length} orders successfully!`);
   }
 }

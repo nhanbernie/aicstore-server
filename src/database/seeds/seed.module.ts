@@ -13,6 +13,8 @@ import {
   ProductVariant, 
   ProductVariantOptionValue 
 } from '@products/entities';
+import { Order } from '@modules/orders/entities/order.entity';
+import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import { SeedService } from './seed.service';
 import configuration from '@config/configuration';
 
@@ -33,6 +35,8 @@ import configuration from '@config/configuration';
       ProductOptionValue,
       ProductVariant,
       ProductVariantOptionValue,
+      Order,
+      OrderItem,
     ]),
   ],
   providers: [SeedService],

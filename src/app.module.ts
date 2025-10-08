@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { ProductsModule } from './modules/products/products.module';
+import { OrdersModule } from './modules/orders/orders.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -19,6 +20,7 @@ import configuration from './config/configuration';
     UsersModule,
     VendorsModule,
     ProductsModule,
+    OrdersModule,
     AuthModule,
   ],
   controllers: [AppController],
