@@ -240,9 +240,45 @@ export const ApiGetProfile = () =>
   applyDecorators(
     ApiAuthOperation(
       'Get current user profile',
-      'Retrieve authenticated user information',
+      'Retrieve authenticated user information including vendor status',
     ),
-    ApiOkResponse({ description: 'User profile retrieved' }),
+    ApiOkResponse({
+      description: 'User profile retrieved successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Profile retrieved successfully',
+          },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              email: { type: 'string', example: 'user@example.com' },
+              roles: {
+                type: 'array',
+                items: { type: 'string' },
+                example: ['user'],
+              },
+              approvedStatus: {
+                type: 'string',
+                nullable: true,
+                example: null,
+                description:
+                  'Vendor status if user is a vendor (pending, approved, rejected, suspended), null otherwise',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
   );
 
 export const ApiForgotPassword = () =>
@@ -1267,5 +1303,57 @@ export const ApiSuspendVendor = () =>
     }),
     ApiForbiddenResponse({
       description: 'Only admins can suspend vendors',
+    }),
+  );
+
+// Payment specific decorators
+export const ApiCreatePayment = () =>
+  applyDecorators(
+    ApiAuthOperation('Create payment', 'Create a new payment order'),
+    ApiOkResponse({
+      description: 'Payment created successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Payment created successfully' },
+          data: {
+            type: 'object',
+            properties: {
+              paymentUrl: {
+                type: 'string',
+                example: 'https://payos.vn/payment/...',
+              },
+              orderCode: { type: 'string', example: 'ORDER_123456' },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+  );
+
+export const ApiPayosWebhook = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'PayOS webhook',
+      description: 'Handle PayOS payment webhook notifications',
+    }),
+    ApiOkResponse({
+      description: 'Webhook processed successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Webhook processed successfully',
+          },
+          data: { type: 'null', example: null },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
     }),
   );

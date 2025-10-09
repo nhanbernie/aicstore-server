@@ -58,6 +58,6 @@ export class PaymentsService {
     const response = await firstValueFrom(
       this.httpService.post(url, payload, config),
     );
-    return response.data;
+    return (response as any).data;
   }
 }

@@ -93,8 +93,14 @@ export class AuthController {
   @Get('profile')
   @ApiGetProfile()
   @ResponseMessage(ResponseMessages.PROFILE_RETRIEVED)
-  getProfile(@Request() req) {
-    return req.user;
+  async getProfile(@Request() req) {
+    // Lấy vendor status nếu user có role VENDOR
+    const approvedStatus = await this.authService.getVendorStatus(req.user);
+
+    return {
+      ...req.user,
+      approvedStatus,
+    };
   }
 
   @Post('forgot-password')
