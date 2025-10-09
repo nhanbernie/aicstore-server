@@ -7,7 +7,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vendor } from './entity/vendor.schema';
-import { CreateVendorDto, UpdateVendorDto } from './dto/vendor.dto';
+import {
+  CreateVendorDto,
+  UpdateVendorDto,
+  AdminUpdateVendorDto,
+} from './dto/vendor.dto';
 import { UsersService } from '@users/users.service';
 import { ROLE } from '@enums/auth.enums';
 
@@ -19,7 +23,10 @@ export class VendorsService {
     private readonly usersService: UsersService,
   ) {}
 
-  async create(createVendorDto: CreateVendorDto, userId: string): Promise<Vendor> {
+  async create(
+    createVendorDto: CreateVendorDto,
+    userId: string,
+  ): Promise<Vendor> {
     // Check if user already has a vendor profile
     const existingVendor = await this.findByUserId(userId);
     if (existingVendor) {
@@ -65,7 +72,12 @@ export class VendorsService {
     });
   }
 
-  async update(id: string, updateVendorDto: UpdateVendorDto, currentUserId: string, userRoles: string[]): Promise<Vendor> {
+  async update(
+    id: string,
+    updateVendorDto: UpdateVendorDto | AdminUpdateVendorDto,
+    currentUserId: string,
+    userRoles: string[],
+  ): Promise<Vendor> {
     const vendor = await this.findById(id);
 
     // Check permissions: only admin or the vendor owner can update
@@ -73,11 +85,13 @@ export class VendorsService {
     const isOwner = vendor.userId === currentUserId;
 
     if (!isAdmin && !isOwner) {
-      throw new ForbiddenException('You can only update your own vendor profile');
+      throw new ForbiddenException(
+        'You can only update your own vendor profile',
+      );
     }
 
     // Only admin can change status
-    if (updateVendorDto.status && !isAdmin) {
+    if ('status' in updateVendorDto && updateVendorDto.status && !isAdmin) {
       throw new ForbiddenException('Only admin can change vendor status');
     }
 
@@ -87,10 +101,10 @@ export class VendorsService {
 
   async remove(id: string): Promise<void> {
     const vendor = await this.findById(id);
-    
+
     // Update user role back to USER when vendor is deleted
     await this.usersService.update(vendor.userId, { roles: [ROLE.USER] });
-    
+
     await this.vendorsRepository.remove(vendor);
   }
 

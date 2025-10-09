@@ -98,13 +98,20 @@ export const ApiRegister = () =>
                 properties: {
                   id: {
                     type: 'string',
-                    example: '123e4567-e89b-12d3-a456-426614174000',
+                    example: '123e4567-e89b-12d3-a456-426614173000',
                   },
                   email: { type: 'string', example: 'user@example.com' },
                   roles: {
                     type: 'array',
                     items: { type: 'string' },
                     example: ['user'],
+                  },
+                  approvedStatus: {
+                    type: 'string',
+                    nullable: true,
+                    example: null,
+                    description:
+                      'Vendor status if user is a vendor (pending, approved, rejected, suspended), null otherwise',
                   },
                 },
               },
@@ -162,13 +169,20 @@ export const ApiLogin = () =>
                 properties: {
                   id: {
                     type: 'string',
-                    example: '123e4567-e89b-12d3-a456-426614174000',
+                    example: '123e4567-e89b-12d3-a456-426614173000',
                   },
                   email: { type: 'string', example: 'user@example.com' },
                   roles: {
                     type: 'array',
                     items: { type: 'string' },
                     example: ['user'],
+                  },
+                  approvedStatus: {
+                    type: 'string',
+                    nullable: true,
+                    example: null,
+                    description:
+                      'Vendor status if user is a vendor (pending, approved, rejected, suspended), null otherwise',
                   },
                 },
               },
@@ -226,9 +240,45 @@ export const ApiGetProfile = () =>
   applyDecorators(
     ApiAuthOperation(
       'Get current user profile',
-      'Retrieve authenticated user information',
+      'Retrieve authenticated user information including vendor status',
     ),
-    ApiOkResponse({ description: 'User profile retrieved' }),
+    ApiOkResponse({
+      description: 'User profile retrieved successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Profile retrieved successfully',
+          },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              email: { type: 'string', example: 'user@example.com' },
+              roles: {
+                type: 'array',
+                items: { type: 'string' },
+                example: ['user'],
+              },
+              approvedStatus: {
+                type: 'string',
+                nullable: true,
+                example: null,
+                description:
+                  'Vendor status if user is a vendor (pending, approved, rejected, suspended), null otherwise',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
   );
 
 export const ApiForgotPassword = () =>
@@ -269,7 +319,7 @@ export const ApiVerifyResetToken = () =>
         properties: {
           id: {
             type: 'string',
-            example: '123e4567-e89b-12d3-a456-426614174000',
+            example: '123e4567-e89b-12d3-a456-426614173000',
           },
           email: { type: 'string', example: 'user@example.com' },
           roles: {
@@ -306,6 +356,89 @@ export const ApiResetPassword = () =>
       },
     }),
     ApiCommonResponses(),
+  );
+
+// Google auth specific decorators
+export const ApiGoogleLogin = () =>
+  applyDecorators(
+    ApiPublicOperation(
+      'Google OAuth2 login',
+      'Redirect user to Google login consent screen',
+    ),
+    ApiOkResponse({
+      description: 'Redirect to Google OAuth consent screen',
+    }),
+    ApiUnauthorizedResponse({
+      description: 'Google authentication failed',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'Google authentication failed' },
+          data: { type: 'null', example: null },
+          errors: {
+            type: 'object',
+            example: { error: 'Unauthorized', statusCode: 401 },
+          },
+          statusCode: { type: 'number', example: 401 },
+        },
+      },
+    }),
+  );
+
+export const ApiGoogleCallback = () =>
+  applyDecorators(
+    ApiPublicOperation(
+      'Google OAuth2 callback',
+      'Google redirects here after login. The API exchanges Google profile for JWT tokens.',
+    ),
+    ApiOkResponse({
+      description: 'Google login successful, returns JWT tokens',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Google login successful' },
+          data: {
+            type: 'object',
+            properties: {
+              accessToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
+              refreshToken: {
+                type: 'string',
+                example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              },
+              user: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    example: '123e4567-e89b-12d3-a456-426614173000',
+                  },
+                  email: { type: 'string', example: 'user@gmail.com' },
+                  roles: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    example: ['user'],
+                  },
+                  approvedStatus: {
+                    type: 'string',
+                    nullable: true,
+                    example: null,
+                    description:
+                      'Vendor status if user is a vendor (pending, approved, rejected, suspended), null otherwise',
+                  },
+                },
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
   );
 
 // Products specific decorators
@@ -630,21 +763,59 @@ export const ApiGetVariants = () =>
     }),
   );
 
-export const ApiCreatePayment = () =>
+// Vendor specific decorators
+export const ApiCreateVendor = () =>
   applyDecorators(
-    ApiPublicOperation('Create a new payment', 'Send payment request to PayOS'),
+    ApiAuthOperation(
+      'Create vendor profile',
+      'Register as a vendor - only regular users can become vendors',
+    ),
     ApiCreatedResponse({
-      description: 'Payment created successfully',
+      description: 'Vendor profile created successfully',
       schema: {
         type: 'object',
         properties: {
           success: { type: 'boolean', example: true },
-          message: { type: 'string', example: 'Resource created successfully' },
+          message: {
+            type: 'string',
+            example: 'Vendor profile created successfully',
+          },
           data: {
             type: 'object',
-            example: {
-              paymentId: 'pay_1234567890',
-              paymentUrl: 'https://payos.vn/checkout/123456',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'ABC Company Ltd' },
+              businessDescription: {
+                type: 'string',
+                example: 'We provide high-quality products',
+              },
+              businessAddress: {
+                type: 'string',
+                example: '123 Business Street, City',
+              },
+              businessPhone: { type: 'string', example: '+84123456789' },
+              businessEmail: {
+                type: 'string',
+                example: 'business@company.com',
+              },
+              businessLicense: { type: 'string', example: 'BL123456789' },
+              taxId: { type: 'string', example: 'TAX123456789' },
+              status: { type: 'string', example: 'pending' },
+              userId: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              createdAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
             },
           },
           errors: { type: 'null', example: null },
@@ -652,42 +823,512 @@ export const ApiCreatePayment = () =>
         },
       },
     }),
-    ApiBadRequestResponse({
-      description: 'Invalid payment data',
+    ApiForbiddenResponse({
+      description: 'Only regular users can create vendor profiles',
+    }),
+  );
+
+export const ApiGetVendors = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Get all vendors',
+      'Retrieve list of all vendors with optional status filtering - admin only',
+    ),
+    ApiOkResponse({
+      description: 'Vendors retrieved successfully',
       schema: {
         type: 'object',
         properties: {
-          success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'Validation failed' },
-          data: { type: 'null', example: null },
-          errors: {
-            type: 'object',
-            example: {
-              validation: [
-                'amount must be greater than 0',
-                'orderId is required',
-              ],
-              error: 'Bad Request',
-              statusCode: 400,
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Vendors retrieved successfully',
+          },
+          data: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'string',
+                  example: '123e4567-e89b-12d3-a456-426614173000',
+                },
+                businessName: { type: 'string', example: 'ABC Company Ltd' },
+                businessDescription: {
+                  type: 'string',
+                  example: 'We provide high-quality products',
+                },
+                businessAddress: {
+                  type: 'string',
+                  example: '123 Business Street, City',
+                },
+                businessPhone: { type: 'string', example: '+84123456789' },
+                businessEmail: {
+                  type: 'string',
+                  example: 'business@company.com',
+                },
+                businessLicense: { type: 'string', example: 'BL123456789' },
+                taxId: { type: 'string', example: 'TAX123456789' },
+                status: { type: 'string', example: 'approved' },
+                userId: {
+                  type: 'string',
+                  example: '123e4567-e89b-12d3-a456-426614173000',
+                },
+                createdAt: {
+                  type: 'string',
+                  example: '2024-01-01T00:00:00.000Z',
+                },
+                updatedAt: {
+                  type: 'string',
+                  example: '2024-01-01T00:00:00.000Z',
+                },
+              },
             },
           },
-          statusCode: { type: 'number', example: 400 },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
         },
       },
     }),
-    ApiInternalServerErrorResponse({
-      description: 'Internal server error',
+    ApiForbiddenResponse({
+      description: 'Only admins can access this endpoint',
+    }),
+  );
+
+export const ApiGetMyVendorProfile = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Get my vendor profile',
+      "Retrieve current vendor's own profile information",
+    ),
+    ApiOkResponse({
+      description: 'Vendor profile retrieved successfully',
       schema: {
         type: 'object',
         properties: {
-          success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'Internal server error' },
-          data: { type: 'null', example: null },
-          errors: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Vendor profile found' },
+          data: {
             type: 'object',
-            example: { error: 'Internal server error' },
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'ABC Company Ltd' },
+              businessDescription: {
+                type: 'string',
+                example: 'We provide high-quality products',
+              },
+              businessAddress: {
+                type: 'string',
+                example: '123 Business Street, City',
+              },
+              businessPhone: { type: 'string', example: '+84123456789' },
+              businessEmail: {
+                type: 'string',
+                example: 'business@company.com',
+              },
+              businessLicense: { type: 'string', example: 'BL123456789' },
+              taxId: { type: 'string', example: 'TAX123456789' },
+              status: { type: 'string', example: 'approved' },
+              userId: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              createdAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
+            },
           },
-          statusCode: { type: 'number', example: 500 },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor profile not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only vendors can access this endpoint',
+    }),
+  );
+
+export const ApiGetVendorById = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Get vendor by ID',
+      'Retrieve specific vendor by their ID',
+    ),
+    ApiOkResponse({
+      description: 'Vendor retrieved successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Vendor found' },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'ABC Company Ltd' },
+              businessDescription: {
+                type: 'string',
+                example: 'We provide high-quality products',
+              },
+              businessAddress: {
+                type: 'string',
+                example: '123 Business Street, City',
+              },
+              businessPhone: { type: 'string', example: '+84123456789' },
+              businessEmail: {
+                type: 'string',
+                example: 'business@company.com',
+              },
+              businessLicense: { type: 'string', example: 'BL123456789' },
+              taxId: { type: 'string', example: 'TAX123456789' },
+              status: { type: 'string', example: 'approved' },
+              userId: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              createdAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only admins and vendors can access this endpoint',
+    }),
+  );
+
+export const ApiUpdateVendor = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Update my vendor profile',
+      'Update vendor information - vendors can only update their own profile (no status field)',
+    ),
+    ApiOkResponse({
+      description: 'Vendor profile updated successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Vendor profile updated successfully',
+          },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'Updated Company Ltd' },
+              businessDescription: {
+                type: 'string',
+                example: 'Updated business description',
+              },
+              businessAddress: {
+                type: 'string',
+                example: '456 New Business Street, City',
+              },
+              businessPhone: { type: 'string', example: '+84987654321' },
+              businessEmail: { type: 'string', example: 'updated@company.com' },
+              businessLicense: { type: 'string', example: 'BL123456789' },
+              taxId: { type: 'string', example: 'TAX123456789' },
+              status: { type: 'string', example: 'approved' },
+              userId: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              createdAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-02T00:00:00.000Z',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor profile not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only vendors can update their own profile',
+    }),
+  );
+
+export const ApiAdminUpdateVendor = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Admin update vendor',
+      'Update vendor information including status - admin only',
+    ),
+    ApiOkResponse({
+      description: 'Vendor updated successfully by admin',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Vendor updated successfully' },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'Updated Company Ltd' },
+              businessDescription: {
+                type: 'string',
+                example: 'Updated business description',
+              },
+              businessAddress: {
+                type: 'string',
+                example: '456 New Business Street, City',
+              },
+              businessPhone: { type: 'string', example: '+84987654321' },
+              businessEmail: { type: 'string', example: 'updated@company.com' },
+              businessLicense: { type: 'string', example: 'BL123456789' },
+              taxId: { type: 'string', example: 'TAX123456789' },
+              status: { type: 'string', example: 'approved' },
+              userId: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              createdAt: {
+                type: 'string',
+                example: '2024-01-01T00:00:00.000Z',
+              },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-02T00:00:00.000Z',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only admins can update vendor status',
+    }),
+  );
+
+export const ApiDeleteVendor = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Delete vendor',
+      'Permanently delete a vendor profile - admin only',
+    ),
+    ApiOkResponse({
+      description: 'Vendor deleted successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Vendor deleted successfully' },
+          data: {
+            type: 'object',
+            properties: {
+              message: {
+                type: 'string',
+                example: 'Vendor deleted successfully',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only admins can delete vendors',
+    }),
+  );
+
+export const ApiApproveVendor = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Approve vendor',
+      'Approve a pending vendor application - admin only',
+    ),
+    ApiOkResponse({
+      description: 'Vendor approved successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Vendor đã được phê duyệt' },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'ABC Company Ltd' },
+              status: { type: 'string', example: 'approved' },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-02T00:00:00.000Z',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only admins can approve vendors',
+    }),
+  );
+
+export const ApiRejectVendor = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Reject vendor',
+      'Reject a pending vendor application - admin only',
+    ),
+    ApiOkResponse({
+      description: 'Vendor rejected successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Vendor đã bị từ chối' },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'ABC Company Ltd' },
+              status: { type: 'string', example: 'rejected' },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-02T00:00:00.000Z',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only admins can reject vendors',
+    }),
+  );
+
+export const ApiSuspendVendor = () =>
+  applyDecorators(
+    ApiAuthOperation(
+      'Suspend vendor',
+      'Suspend an approved vendor - admin only',
+    ),
+    ApiOkResponse({
+      description: 'Vendor suspended successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Vendor đã bị tạm ngưng' },
+          data: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                example: '123e4567-e89b-12d3-a456-426614173000',
+              },
+              businessName: { type: 'string', example: 'ABC Company Ltd' },
+              status: { type: 'string', example: 'suspended' },
+              updatedAt: {
+                type: 'string',
+                example: '2024-01-02T00:00:00.000Z',
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+    ApiNotFoundResponse({
+      description: 'Vendor not found',
+    }),
+    ApiForbiddenResponse({
+      description: 'Only admins can suspend vendors',
+    }),
+  );
+
+// Payment specific decorators
+export const ApiCreatePayment = () =>
+  applyDecorators(
+    ApiAuthOperation('Create payment', 'Create a new payment order'),
+    ApiOkResponse({
+      description: 'Payment created successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Payment created successfully' },
+          data: {
+            type: 'object',
+            properties: {
+              paymentUrl: {
+                type: 'string',
+                example: 'https://payos.vn/payment/...',
+              },
+              orderCode: { type: 'string', example: 'ORDER_123456' },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
         },
       },
     }),
@@ -695,45 +1336,23 @@ export const ApiCreatePayment = () =>
 
 export const ApiPayosWebhook = () =>
   applyDecorators(
-    ApiPublicOperation('PayOS Webhook', 'Receive PayOS payment callback'),
+    ApiOperation({
+      summary: 'PayOS webhook',
+      description: 'Handle PayOS payment webhook notifications',
+    }),
     ApiOkResponse({
-      description: 'Webhook received successfully',
+      description: 'Webhook processed successfully',
       schema: {
         type: 'object',
         properties: {
-          code: { type: 'string', example: 'SUCCESS' },
-        },
-      },
-    }),
-    ApiBadRequestResponse({
-      description: 'Invalid webhook payload',
-      schema: {
-        type: 'object',
-        properties: {
-          success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'Validation failed' },
-          data: { type: 'null', example: null },
-          errors: {
-            type: 'object',
-            example: { error: 'Bad Request', statusCode: 400 },
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Webhook processed successfully',
           },
-          statusCode: { type: 'number', example: 400 },
-        },
-      },
-    }),
-    ApiInternalServerErrorResponse({
-      description: 'Internal server error',
-      schema: {
-        type: 'object',
-        properties: {
-          success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'Internal server error' },
           data: { type: 'null', example: null },
-          errors: {
-            type: 'object',
-            example: { error: 'Internal server error' },
-          },
-          statusCode: { type: 'number', example: 500 },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
         },
       },
     }),

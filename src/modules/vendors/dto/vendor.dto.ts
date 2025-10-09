@@ -8,32 +8,56 @@ class BaseVendorDto {
   @IsString()
   businessName: string;
 
-  @ApiProperty({ example: 'We provide high-quality products', description: 'Business description', required: false })
+  @ApiProperty({
+    example: 'We provide high-quality products',
+    description: 'Business description',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   businessDescription?: string;
 
-  @ApiProperty({ example: '123 Business Street, City', description: 'Business address', required: false })
+  @ApiProperty({
+    example: '123 Business Street, City',
+    description: 'Business address',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   businessAddress?: string;
 
-  @ApiProperty({ example: '+84123456789', description: 'Business phone', required: false })
+  @ApiProperty({
+    example: '+84123456789',
+    description: 'Business phone',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   businessPhone?: string;
 
-  @ApiProperty({ example: 'business@company.com', description: 'Business email', required: false })
+  @ApiProperty({
+    example: 'business@company.com',
+    description: 'Business email',
+    required: false,
+  })
   @IsEmail()
   @IsOptional()
   businessEmail?: string;
 
-  @ApiProperty({ example: 'BL123456789', description: 'Business license number', required: false })
+  @ApiProperty({
+    example: 'BL123456789',
+    description: 'Business license number',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   businessLicense?: string;
 
-  @ApiProperty({ example: 'TAX123456789', description: 'Tax ID number', required: false })
+  @ApiProperty({
+    example: 'TAX123456789',
+    description: 'Tax ID number',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   taxId?: string;
@@ -42,11 +66,16 @@ class BaseVendorDto {
 export class CreateVendorDto extends BaseVendorDto {}
 
 export class UpdateVendorDto extends PartialType(BaseVendorDto) {
-  @ApiProperty({ 
-    example: 'approved', 
-    description: 'Vendor status', 
-    enum: ['pending', 'approved', 'rejected', 'suspended'], 
-    required: false 
+  // Vendor không được phép update status - chỉ admin mới được
+  // Status chỉ được thay đổi qua các endpoint riêng: approve, reject, suspend
+}
+
+export class AdminUpdateVendorDto extends PartialType(BaseVendorDto) {
+  @ApiProperty({
+    example: 'approved',
+    description: 'Vendor status - chỉ admin mới được thay đổi',
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
+    required: false,
   })
   @IsIn(['pending', 'approved', 'rejected', 'suspended'])
   @IsOptional()
@@ -54,7 +83,7 @@ export class UpdateVendorDto extends PartialType(BaseVendorDto) {
 }
 
 export class VendorResponseDto {
-  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614173000' })
   @Expose()
   id: string;
 
@@ -86,11 +115,14 @@ export class VendorResponseDto {
   @Expose()
   taxId?: string;
 
-  @ApiProperty({ example: 'approved', enum: ['pending', 'approved', 'rejected', 'suspended'] })
+  @ApiProperty({
+    example: 'approved',
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
+  })
   @Expose()
   status: string;
 
-  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614173000' })
   @Expose()
   userId: string;
 
