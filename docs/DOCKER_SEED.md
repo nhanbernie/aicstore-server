@@ -39,7 +39,7 @@ npm run seed:refresh
 ## Cách 3: Tự động seed khi khởi động container
 
 ### Thêm script vào Dockerfile
-Thêm vào `Dockerfile` sau dòng `EXPOSE 4000`:
+Thêm vào `Dockerfile` sau dòng `EXPOSE 3000`:
 
 ```dockerfile
 # Copy seed script
@@ -98,12 +98,12 @@ SELECT COUNT(*) FROM categories;
 ### Kiểm tra qua API
 ```bash
 # Test login với seeded user
-curl -X POST http://localhost:4000/api/auth/login \
+curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@wdp.com", "password": "Admin123!"}'
 
 # Test products API
-curl http://localhost:4000/api/products
+curl http://localhost:3000/api/products
 ```
 
 ## Troubleshooting

@@ -82,9 +82,10 @@ export class AuthResponseDto {
   @ApiProperty({
     description: 'User information',
     example: {
-      id: '123e4567-e89b-12d3-a456-426614174000',
+      id: '123e4567-e89b-12d3-a456-426614173000',
       email: 'user@example.com',
       roles: ['user'],
+      approvedStatus: null, // null nếu không phải vendor
     },
   })
   @Expose()
@@ -92,6 +93,7 @@ export class AuthResponseDto {
     id: string;
     email: string;
     roles: string[];
+    approvedStatus?: string | null; // pending, approved, rejected, suspended, hoặc null
   };
 }
 
