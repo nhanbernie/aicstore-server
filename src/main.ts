@@ -57,7 +57,7 @@ async function bootstrap() {
       },
       'JWT-auth', // This name here is important for matching up with @ApiBearerAuth() in your controllers
     )
-    .addServer('http://localhost:4000', 'Local Development Server')
+    .addServer('http://localhost:3000', 'Local Development Server')
     .addServer('https://api.wdp.com', 'Production Server')
     .build();
 

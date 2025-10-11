@@ -4,15 +4,15 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from '../database.module';
 import { User } from '@users/entity/user.schema';
 import { Vendor } from '@vendors/entity/vendor.schema';
-import { 
-  Category, 
-  Product, 
-  ProductImage, 
-  ProductOption, 
-  ProductOptionValue, 
-  ProductVariant, 
-  ProductVariantOptionValue 
+import {
+  Product,
+  ProductImage,
+  ProductOption,
+  ProductOptionValue,
+  ProductVariant,
+  ProductVariantOptionValue,
 } from '@products/entities';
+import { Category } from '@/modules/categories/entity/category.entity';
 import { SeedService } from './seed.service';
 import configuration from '@config/configuration';
 
