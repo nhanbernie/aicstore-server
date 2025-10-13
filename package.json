@@ -27,7 +27,7 @@
     "docker:prod": "docker-compose -f docker-compose.yml up --build -d",
     "seed:run": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
     "seed": "npm run seed:run seed",
-    "seed:clear": "npm run seed:run clear",
+    "seed:clear": "npm run seed:run clear", 
     "seed:refresh": "npm run seed:run refresh"
   },
   "dependencies": {
