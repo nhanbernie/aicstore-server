@@ -7,15 +7,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
-import { 
-  Product, 
-  Category, 
-  ProductImage, 
-  ProductOption, 
+import {
+  Product,
+  ProductImage,
+  ProductOption,
   ProductOptionValue,
   ProductVariant,
-  ProductVariantOptionValue
+  ProductVariantOptionValue,
 } from './entities';
+import { Category } from '../categories/entity/category.entity';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -24,7 +24,7 @@ import {
   ProductDetailResponseDto,
   ProductListingItemDto,
   FacetsDto,
-  PaginationDto
+  PaginationDto,
 } from './dto';
 import { plainToClass } from 'class-transformer';
 import { ROLE } from '@enums/auth.enums';
@@ -48,7 +48,9 @@ export class ProductsService {
     private readonly productVariantOptionValueRepository: Repository<ProductVariantOptionValue>,
   ) {}
 
-  async findAll(query: SearchProductQueryDto): Promise<ProductListingResponseDto> {
+  async findAll(
+    query: SearchProductQueryDto,
+  ): Promise<ProductListingResponseDto> {
     const {
       q,
       categoryId,
@@ -60,7 +62,7 @@ export class ProductsService {
       sort = 'newest',
       page = 1,
       limit = 24,
-      withFacets = false
+      withFacets = false,
     } = query;
 
     // Build base query
@@ -74,7 +76,7 @@ export class ProductsService {
     if (q) {
       queryBuilder.andWhere(
         '(product.name ILIKE :search OR product.shortDescription ILIKE :search OR product.brand ILIKE :search)',
-        { search: `%${q}%` }
+        { search: `%${q}%` },
       );
     }
 
@@ -83,7 +85,9 @@ export class ProductsService {
     }
 
     if (brand) {
-      queryBuilder.andWhere('product.brand ILIKE :brand', { brand: `%${brand}%` });
+      queryBuilder.andWhere('product.brand ILIKE :brand', {
+        brand: `%${brand}%`,
+      });
     }
 
     if (vendorId) {
@@ -91,15 +95,21 @@ export class ProductsService {
     }
 
     if (minPrice !== undefined) {
-      queryBuilder.andWhere('COALESCE(product.salePrice, product.price)::bigint >= :minPrice', { 
-        minPrice: (minPrice * 1).toString() 
-      });
+      queryBuilder.andWhere(
+        'COALESCE(product.salePrice, product.price)::bigint >= :minPrice',
+        {
+          minPrice: (minPrice * 1).toString(),
+        },
+      );
     }
 
     if (maxPrice !== undefined) {
-      queryBuilder.andWhere('COALESCE(product.salePrice, product.price)::bigint <= :maxPrice', { 
-        maxPrice: (maxPrice * 1).toString() 
-      });
+      queryBuilder.andWhere(
+        'COALESCE(product.salePrice, product.price)::bigint <= :maxPrice',
+        {
+          maxPrice: (maxPrice * 1).toString(),
+        },
+      );
     }
 
     if (inStock) {
@@ -109,10 +119,16 @@ export class ProductsService {
     // Apply sorting
     switch (sort) {
       case 'price_asc':
-        queryBuilder.orderBy('COALESCE(product.salePrice, product.price)', 'ASC');
+        queryBuilder.orderBy(
+          'COALESCE(product.salePrice, product.price)',
+          'ASC',
+        );
         break;
       case 'price_desc':
-        queryBuilder.orderBy('COALESCE(product.salePrice, product.price)', 'DESC');
+        queryBuilder.orderBy(
+          'COALESCE(product.salePrice, product.price)',
+          'DESC',
+        );
         break;
       case 'bestselling':
         // TODO: Implement based on sales data or view count
@@ -135,18 +151,24 @@ export class ProductsService {
     const products = await queryBuilder.getMany();
 
     // Transform to response DTOs
-    const items = products.map(product => {
-      const item = plainToClass(ProductListingItemDto, {
-        ...product,
-        price: product.price ? parseInt(product.price) : undefined,
-        salePrice: product.salePrice ? parseInt(product.salePrice) : undefined,
-        stock: {
-          quantity: product.stockQty,
-          unit: product.stockUnit
+    const items = products.map((product) => {
+      const item = plainToClass(
+        ProductListingItemDto,
+        {
+          ...product,
+          price: product.price ? parseInt(product.price) : undefined,
+          salePrice: product.salePrice
+            ? parseInt(product.salePrice)
+            : undefined,
+          stock: {
+            quantity: product.stockQty,
+            unit: product.stockUnit,
+          },
+          specsSummary: this.extractSpecsSummary(product.specs),
         },
-        specsSummary: this.extractSpecsSummary(product.specs)
-      }, { excludeExtraneousValues: true });
-      
+        { excludeExtraneousValues: true },
+      );
+
       return item;
     });
 
@@ -154,12 +176,12 @@ export class ProductsService {
       page,
       limit,
       total,
-      totalPages
+      totalPages,
     };
 
     const result: ProductListingResponseDto = {
       items,
-      pagination
+      pagination,
     };
 
     // Add facets if requested
@@ -182,8 +204,8 @@ export class ProductsService {
         'variants',
         'variants.optionValues',
         'variants.optionValues.optionValue',
-        'variants.optionValues.optionValue.option'
-      ]
+        'variants.optionValues.optionValue.option',
+      ],
     });
 
     if (!product) {
@@ -205,8 +227,8 @@ export class ProductsService {
         'variants',
         'variants.optionValues',
         'variants.optionValues.optionValue',
-        'variants.optionValues.optionValue.option'
-      ]
+        'variants.optionValues.optionValue.option',
+      ],
     });
 
     if (!product) {
@@ -216,15 +238,21 @@ export class ProductsService {
     return this.transformToDetailResponse(product);
   }
 
-  async create(createProductDto: CreateProductDto, userId: string, userRole: string): Promise<{ id: string }> {
+  async create(
+    createProductDto: CreateProductDto,
+    userId: string,
+    userRole: string,
+  ): Promise<{ id: string }> {
     // Check if user can create product for this vendor
     if (userRole !== ROLE.ADMIN && createProductDto.vendorId !== userId) {
-      throw new ForbiddenException('Bạn chỉ có thể tạo sản phẩm cho vendor của mình');
+      throw new ForbiddenException(
+        'Bạn chỉ có thể tạo sản phẩm cho vendor của mình',
+      );
     }
 
     // Check if slug is unique
     const existingProduct = await this.productRepository.findOne({
-      where: { slug: createProductDto.slug }
+      where: { slug: createProductDto.slug },
     });
     if (existingProduct) {
       throw new ConflictException('Slug đã tồn tại');
@@ -232,7 +260,7 @@ export class ProductsService {
 
     // Check if category exists
     const category = await this.categoryRepository.findOne({
-      where: { id: createProductDto.categoryId }
+      where: { id: createProductDto.categoryId },
     });
     if (!category) {
       throw new NotFoundException('Không tìm thấy danh mục');
@@ -245,12 +273,14 @@ export class ProductsService {
 
     // Validate SKUs are unique
     if (createProductDto.variants?.length) {
-      const skus = createProductDto.variants.map(v => v.sku);
+      const skus = createProductDto.variants.map((v) => v.sku);
       const existingVariants = await this.productVariantRepository.find({
-        where: skus.map(sku => ({ sku }))
+        where: skus.map((sku) => ({ sku })),
       });
       if (existingVariants.length > 0) {
-        throw new ConflictException(`SKU đã tồn tại: ${existingVariants.map(v => v.sku).join(', ')}`);
+        throw new ConflictException(
+          `SKU đã tồn tại: ${existingVariants.map((v) => v.sku).join(', ')}`,
+        );
       }
     }
 
@@ -279,12 +309,12 @@ export class ProductsService {
 
     // Create images
     if (createProductDto.images?.length) {
-      const images = createProductDto.images.map((url, index) => 
+      const images = createProductDto.images.map((url, index) =>
         this.productImageRepository.create({
           productId: savedProduct.id,
           url,
-          position: index + 1
-        })
+          position: index + 1,
+        }),
       );
       await this.productImageRepository.save(images);
     }
@@ -297,10 +327,15 @@ export class ProductsService {
     return { id: savedProduct.id };
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto, userId: string, userRole: string): Promise<{ id: string }> {
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+    userId: string,
+    userRole: string,
+  ): Promise<{ id: string }> {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['vendor']
+      relations: ['vendor'],
     });
 
     if (!product) {
@@ -315,7 +350,7 @@ export class ProductsService {
     // Check slug uniqueness if changed
     if (updateProductDto.slug && updateProductDto.slug !== product.slug) {
       const existingProduct = await this.productRepository.findOne({
-        where: { slug: updateProductDto.slug }
+        where: { slug: updateProductDto.slug },
       });
       if (existingProduct) {
         throw new ConflictException('Slug đã tồn tại');
@@ -342,7 +377,7 @@ export class ProductsService {
 
   async remove(id: string, userId: string, userRole: string): Promise<void> {
     const product = await this.productRepository.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!product) {
@@ -361,46 +396,52 @@ export class ProductsService {
   async getVariants(productId: string) {
     const variants = await this.productVariantRepository.find({
       where: { productId },
-      relations: ['optionValues', 'optionValues.optionValue', 'optionValues.optionValue.option']
+      relations: [
+        'optionValues',
+        'optionValues.optionValue',
+        'optionValues.optionValue.option',
+      ],
     });
 
-    return variants.map(variant => ({
+    return variants.map((variant) => ({
       id: variant.id,
       sku: variant.sku,
       price: variant.price ? parseInt(variant.price) : undefined,
       stockQty: variant.stockQty,
       options: this.buildVariantOptions(variant.optionValues),
-      specs: variant.specs
+      specs: variant.specs,
     }));
   }
 
   // Private helper methods
   private extractSpecsSummary(specs: any): Record<string, any> {
     if (!specs) return {};
-    
+
     // Extract 2-3 most important specs for listing display
     const summary: Record<string, any> = {};
     const importantKeys = ['power', 'voltage', 'weight', 'size', 'material'];
-    
+
     let count = 0;
     for (const key of importantKeys) {
       if (specs[key] && count < 3) {
         if (typeof specs[key] === 'object' && specs[key].value !== undefined) {
-          summary[key] = specs[key].unit ? `${specs[key].value}${specs[key].unit}` : specs[key].value;
+          summary[key] = specs[key].unit
+            ? `${specs[key].value}${specs[key].unit}`
+            : specs[key].value;
         } else {
           summary[key] = specs[key];
         }
         count++;
       }
     }
-    
+
     return summary;
   }
 
   private async buildFacets(query: SearchProductQueryDto): Promise<FacetsDto> {
     // This is a simplified implementation
     // In production, you might want to use aggregation queries or search engines like Elasticsearch
-    
+
     const baseQuery = this.productRepository
       .createQueryBuilder('product')
       .where('product.isActive = :isActive', { isActive: true });
@@ -409,7 +450,7 @@ export class ProductsService {
     if (query.q) {
       baseQuery.andWhere(
         '(product.name ILIKE :search OR product.shortDescription ILIKE :search)',
-        { search: `%${query.q}%` }
+        { search: `%${query.q}%` },
       );
     }
 
@@ -426,46 +467,61 @@ export class ProductsService {
     // Get price range
     const priceRange = await baseQuery
       .select('MIN(COALESCE(product.salePrice, product.price)::bigint)', 'min')
-      .addSelect('MAX(COALESCE(product.salePrice, product.price)::bigint)', 'max')
+      .addSelect(
+        'MAX(COALESCE(product.salePrice, product.price)::bigint)',
+        'max',
+      )
       .getRawOne();
 
     return {
-      brands: brandFacets.map(f => ({ value: f.brand, count: parseInt(f.count) })),
+      brands: brandFacets.map((f) => ({
+        value: f.brand,
+        count: parseInt(f.count),
+      })),
       categories: [], // TODO: Implement category facets
       priceRange: {
         min: parseInt(priceRange?.min || '0'),
-        max: parseInt(priceRange?.max || '0')
+        max: parseInt(priceRange?.max || '0'),
       },
-      specs: {} // TODO: Implement specs facets
+      specs: {}, // TODO: Implement specs facets
     };
   }
 
-  private transformToDetailResponse(product: Product): ProductDetailResponseDto {
-    return plainToClass(ProductDetailResponseDto, {
-      ...product,
-      price: product.price ? parseInt(product.price) : undefined,
-      salePrice: product.salePrice ? parseInt(product.salePrice) : undefined,
-      stock: {
-        quantity: product.stockQty,
-        unit: product.stockUnit
+  private transformToDetailResponse(
+    product: Product,
+  ): ProductDetailResponseDto {
+    return plainToClass(
+      ProductDetailResponseDto,
+      {
+        ...product,
+        price: product.price ? parseInt(product.price) : undefined,
+        salePrice: product.salePrice ? parseInt(product.salePrice) : undefined,
+        stock: {
+          quantity: product.stockQty,
+          unit: product.stockUnit,
+        },
+        variants: product.variants?.map((variant) => ({
+          ...variant,
+          price: variant.price ? parseInt(variant.price) : undefined,
+          options: this.buildVariantOptions(variant.optionValues),
+        })),
       },
-      variants: product.variants?.map(variant => ({
-        ...variant,
-        price: variant.price ? parseInt(variant.price) : undefined,
-        options: this.buildVariantOptions(variant.optionValues)
-      }))
-    }, { excludeExtraneousValues: true });
+      { excludeExtraneousValues: true },
+    );
   }
 
-  private buildVariantOptions(optionValues: ProductVariantOptionValue[]): Record<string, string> {
+  private buildVariantOptions(
+    optionValues: ProductVariantOptionValue[],
+  ): Record<string, string> {
     const options: Record<string, string> = {};
-    
+
     for (const variantOption of optionValues) {
       if (variantOption.optionValue?.option) {
-        options[variantOption.optionValue.option.name] = variantOption.optionValue.value;
+        options[variantOption.optionValue.option.name] =
+          variantOption.optionValue.value;
       }
     }
-    
+
     return options;
   }
 
@@ -474,7 +530,10 @@ export class ProductsService {
     // This would validate that required fields are present and types match
   }
 
-  private async createOptionsAndVariants(productId: string, createProductDto: CreateProductDto): Promise<void> {
+  private async createOptionsAndVariants(
+    productId: string,
+    createProductDto: CreateProductDto,
+  ): Promise<void> {
     if (!createProductDto.options?.length) return;
 
     // Create options and their values
@@ -485,17 +544,17 @@ export class ProductsService {
       const option = await this.productOptionRepository.save({
         productId,
         name: optionDto.name,
-        displayName: optionDto.displayName
+        displayName: optionDto.displayName,
       });
-      
+
       optionMap.set(optionDto.name, option.id);
 
       for (const valueDto of optionDto.values) {
         const value = await this.productOptionValueRepository.save({
           optionId: option.id,
-          value: valueDto.value
+          value: valueDto.value,
         });
-        
+
         valueMap.set(`${optionDto.name}:${valueDto.value}`, value.id);
       }
     }
@@ -508,16 +567,18 @@ export class ProductsService {
           sku: variantDto.sku,
           price: variantDto.price?.toString(),
           stockQty: variantDto.stockQty || 0,
-          specs: variantDto.specs
+          specs: variantDto.specs,
         });
 
         // Link variant to option values
-        for (const [optionName, optionValue] of Object.entries(variantDto.options)) {
+        for (const [optionName, optionValue] of Object.entries(
+          variantDto.options,
+        )) {
           const valueId = valueMap.get(`${optionName}:${optionValue}`);
           if (valueId) {
             await this.productVariantOptionValueRepository.save({
               variantId: variant.id,
-              optionValueId: valueId
+              optionValueId: valueId,
             });
           }
         }

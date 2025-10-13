@@ -6,8 +6,14 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
+import { VendorsService } from '../vendors/vendors.service';
 import { RefreshTokenService } from './services/refresh-token.service';
-import { RegisterDto, LoginDto, AuthResponseDto, RefreshResponseDto } from './dto/auth-response.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  AuthResponseDto,
+  RefreshResponseDto,
+} from './dto/auth-response.dto';
 import { User } from '../users/entity/user.schema';
 import { ROLE } from '../../common/enums/auth.enums';
 
@@ -15,6 +21,7 @@ import { ROLE } from '../../common/enums/auth.enums';
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
+    private readonly vendorsService: VendorsService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly refreshTokenService: RefreshTokenService,
@@ -35,7 +42,11 @@ export class AuthService {
 
     // Generate tokens
     const { accessToken } = await this.generateAccessToken(user);
-    const refreshTokenEntity = await this.refreshTokenService.generateRefreshToken(user);
+    const refreshTokenEntity =
+      await this.refreshTokenService.generateRefreshToken(user);
+
+    // Lấy vendor status (sẽ là null vì user mới tạo có role USER)
+    const approvedStatus = await this.getVendorStatus(user);
 
     return {
       accessToken,
@@ -44,13 +55,18 @@ export class AuthService {
         id: user.id,
         email: user.email,
         roles: user.roles,
+        approvedStatus,
       },
     };
   }
 
   async login(user: User): Promise<AuthResponseDto> {
     const { accessToken } = await this.generateAccessToken(user);
-    const refreshTokenEntity = await this.refreshTokenService.generateRefreshToken(user);
+    const refreshTokenEntity =
+      await this.refreshTokenService.generateRefreshToken(user);
+
+    // Lấy vendor status nếu user có role VENDOR
+    const approvedStatus = await this.getVendorStatus(user);
 
     return {
       accessToken,
@@ -59,24 +75,27 @@ export class AuthService {
         id: user.id,
         email: user.email,
         roles: user.roles,
+        approvedStatus,
       },
     };
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
-    if (user && await user.validatePassword(password)) {
+    if (user && (await user.validatePassword(password))) {
       return user;
     }
     return null;
   }
 
   async refreshTokens(refreshToken: string): Promise<RefreshResponseDto> {
-    const user = await this.refreshTokenService.verifyRefreshToken(refreshToken);
-    
+    const user =
+      await this.refreshTokenService.verifyRefreshToken(refreshToken);
+
     // Generate new tokens
     const { accessToken } = await this.generateAccessToken(user);
-    const newRefreshTokenEntity = await this.refreshTokenService.generateRefreshToken(user);
+    const newRefreshTokenEntity =
+      await this.refreshTokenService.generateRefreshToken(user);
 
     return {
       accessToken,
@@ -99,7 +118,9 @@ export class AuthService {
     return { message: 'Logged out from all devices successfully' };
   }
 
-  private async generateAccessToken(user: User): Promise<{ accessToken: string }> {
+  private async generateAccessToken(
+    user: User,
+  ): Promise<{ accessToken: string }> {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -112,5 +133,19 @@ export class AuthService {
     });
 
     return { accessToken };
+  }
+
+  async getVendorStatus(user: User): Promise<string | null> {
+    try {
+      // Chỉ lấy vendor status nếu user có role VENDOR
+      if (user.roles.includes(ROLE.VENDOR)) {
+        const vendor = await this.vendorsService.findByUserId(user.id);
+        return vendor ? vendor.status : null;
+      }
+      return null;
+    } catch (error) {
+      // Nếu có lỗi, trả về null
+      return null;
+    }
   }
 }

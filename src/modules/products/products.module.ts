@@ -4,13 +4,13 @@ import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
 import {
   Product,
-  Category,
   ProductImage,
   ProductOption,
   ProductOptionValue,
   ProductVariant,
   ProductVariantOptionValue,
 } from './entities';
+import { Category } from '../categories/entity/category.entity';
 
 @Module({
   imports: [

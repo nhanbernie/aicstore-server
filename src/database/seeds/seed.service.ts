@@ -3,9 +3,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '@users/entity/user.schema';
 import { Vendor } from '@vendors/entity/vendor.schema';
-import { Category, Product, ProductImage, ProductOption, ProductOptionValue, ProductVariant, ProductVariantOptionValue } from '@products/entities';
 import { Order } from '@modules/orders/entities/order.entity';
 import { OrderItem } from '@modules/orders/entities/order-item.entity';
+import {
+  Product,
+  ProductImage,
+  ProductOption,
+  ProductOptionValue,
+  ProductVariant,
+  ProductVariantOptionValue,
+} from '@products/entities';
+import { Category } from '@/modules/categories/entity/category.entity';
+
 import { categoriesData } from './data/categories.data';
 import { usersData } from './data/users.data';
 import { vendorsData } from './data/vendors.data';
@@ -70,16 +79,20 @@ export class SeedService {
 
     try {
       // Use raw queries to handle foreign key constraints
-      const queryRunner = this.userRepository.manager.connection.createQueryRunner();
-      
+      const queryRunner =
+        this.userRepository.manager.connection.createQueryRunner();
+
       await queryRunner.query('SET session_replication_role = replica;');
-      
+
       // Clear tables in reverse order
       await queryRunner.query('TRUNCATE TABLE "order_items" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "orders" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "product_variant_option_values" CASCADE;');
+
       await queryRunner.query('TRUNCATE TABLE "product_variants" CASCADE;');
-      await queryRunner.query('TRUNCATE TABLE "product_option_values" CASCADE;');
+      await queryRunner.query(
+        'TRUNCATE TABLE "product_option_values" CASCADE;',
+      );
       await queryRunner.query('TRUNCATE TABLE "product_options" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "product_images" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "products" CASCADE;');
@@ -87,7 +100,7 @@ export class SeedService {
       await queryRunner.query('TRUNCATE TABLE "vendors" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "users" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "refresh_tokens" CASCADE;');
-      
+
       await queryRunner.query('SET session_replication_role = DEFAULT;');
 
       this.logger.log('All data cleared successfully!');
@@ -113,7 +126,7 @@ export class SeedService {
     for (const vendorData of vendorsData) {
       // Find user by email
       const user = await this.userRepository.findOne({
-        where: { email: vendorData.userEmail }
+        where: { email: vendorData.userEmail },
       });
 
       if (!user) {
@@ -124,7 +137,7 @@ export class SeedService {
       const { userEmail, ...vendorInfo } = vendorData;
       const vendor = this.vendorRepository.create({
         ...vendorInfo,
-        userId: user.id
+        userId: user.id,
       });
 
       await this.vendorRepository.save(vendor);
@@ -138,7 +151,7 @@ export class SeedService {
     for (const categoryData of categoriesData) {
       const category = this.categoryRepository.create({
         ...categoryData,
-        schemaVersion: categoryData.specSchema?.version || 1
+        schemaVersion: categoryData.specSchema?.version || 1,
       });
 
       await this.categoryRepository.save(category);
@@ -152,7 +165,7 @@ export class SeedService {
     for (const productData of productsData) {
       // Find category
       const category = await this.categoryRepository.findOne({
-        where: { slug: productData.categorySlug }
+        where: { slug: productData.categorySlug },
       });
 
       if (!category) {
@@ -162,7 +175,7 @@ export class SeedService {
 
       // Find vendor
       const vendor = await this.vendorRepository.findOne({
-        where: { businessName: productData.vendorBusinessName }
+        where: { businessName: productData.vendorBusinessName },
       });
 
       if (!vendor) {
@@ -198,7 +211,7 @@ export class SeedService {
           const image = this.productImageRepository.create({
             productId: savedProduct.id,
             url: productData.images[i],
-            position: i + 1
+            position: i + 1,
           });
           await this.productImageRepository.save(image);
         }
@@ -208,12 +221,17 @@ export class SeedService {
       // Create options and variants
       if (productData.options?.length && productData.variants?.length) {
         await this.createOptionsAndVariants(savedProduct.id, productData);
-        this.logger.log(`  Created ${productData.options.length} options and ${productData.variants.length} variants`);
+        this.logger.log(
+          `  Created ${productData.options.length} options and ${productData.variants.length} variants`,
+        );
       }
     }
   }
 
-  private async createOptionsAndVariants(productId: string, productData: any): Promise<void> {
+  private async createOptionsAndVariants(
+    productId: string,
+    productData: any,
+  ): Promise<void> {
     const optionMap = new Map<string, string>();
     const valueMap = new Map<string, string>();
 
@@ -222,18 +240,18 @@ export class SeedService {
       const option = this.productOptionRepository.create({
         productId,
         name: optionData.name,
-        displayName: optionData.displayName
+        displayName: optionData.displayName,
       });
-      
+
       const savedOption = await this.productOptionRepository.save(option);
       optionMap.set(optionData.name, savedOption.id);
 
       for (const valueData of optionData.values) {
         const value = this.productOptionValueRepository.create({
           optionId: savedOption.id,
-          value: valueData
+          value: valueData,
         });
-        
+
         const savedValue = await this.productOptionValueRepository.save(value);
         valueMap.set(`${optionData.name}:${valueData}`, savedValue.id);
       }
@@ -246,20 +264,25 @@ export class SeedService {
         sku: variantData.sku,
         price: variantData.price?.toString(),
         stockQty: variantData.stockQty || 0,
-        specs: variantData.specs
+        specs: variantData.specs,
       });
 
       const savedVariant = await this.productVariantRepository.save(variant);
 
       // Link variant to option values
-      for (const [optionName, optionValue] of Object.entries(variantData.options)) {
+      for (const [optionName, optionValue] of Object.entries(
+        variantData.options,
+      )) {
         const valueId = valueMap.get(`${optionName}:${optionValue}`);
         if (valueId) {
-          const variantOptionValue = this.productVariantOptionValueRepository.create({
-            variantId: savedVariant.id,
-            optionValueId: valueId
-          });
-          await this.productVariantOptionValueRepository.save(variantOptionValue);
+          const variantOptionValue =
+            this.productVariantOptionValueRepository.create({
+              variantId: savedVariant.id,
+              optionValueId: valueId,
+            });
+          await this.productVariantOptionValueRepository.save(
+            variantOptionValue,
+          );
         }
       }
     }

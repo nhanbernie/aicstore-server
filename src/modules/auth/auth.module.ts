@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { UsersModule } from '../users/users.module';
+import { VendorsModule } from '../vendors/vendors.module';
 import { RefreshToken } from './entity/refresh-token.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
@@ -19,6 +20,7 @@ import { PasswordResetService } from './services/password-reset.service';
 @Module({
   imports: [
     UsersModule,
+    VendorsModule,
     PassportModule,
     TypeOrmModule.forFeature([RefreshToken, PasswordResetToken]),
     JwtModule.registerAsync({
