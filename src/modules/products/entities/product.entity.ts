@@ -9,7 +9,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { Category } from './category.entity';
+import { Category } from '../../categories/entity/category.entity';
 import { Vendor } from '@vendors/entity/vendor.schema';
 import { ProductImage } from './product-image.entity';
 import { ProductOption } from './product-option.entity';
@@ -51,81 +51,81 @@ export class Product {
   @Column({ type: 'text', nullable: true })
   thumbnail?: string;
 
-  @Column({ 
-    type: 'bigint', 
+  @Column({
+    type: 'bigint',
     nullable: true,
-    comment: 'Price in smallest currency unit (VND = dong)'
+    comment: 'Price in smallest currency unit (VND = dong)',
   })
   price?: string;
 
-  @Column({ 
-    type: 'bigint', 
+  @Column({
+    type: 'bigint',
     name: 'sale_price',
     nullable: true,
-    comment: 'Sale price in smallest currency unit'
+    comment: 'Sale price in smallest currency unit',
   })
   salePrice?: string;
 
   @Column({ length: 3, default: 'VND' })
   currency: string;
 
-  @Column({ 
-    type: 'int', 
+  @Column({
+    type: 'int',
     name: 'stock_qty',
     default: 0,
-    comment: 'Total stock quantity'
+    comment: 'Total stock quantity',
   })
   stockQty: number;
 
-  @Column({ 
-    length: 32, 
+  @Column({
+    length: 32,
     name: 'stock_unit',
     default: 'cái',
-    comment: 'Stock unit (cái, kg, m, etc.)'
+    comment: 'Stock unit (cái, kg, m, etc.)',
   })
   stockUnit: string;
 
-  @Column({ 
-    type: 'text', 
-    array: true, 
+  @Column({
+    type: 'text',
+    array: true,
     default: '{}',
-    comment: 'Product badges: sale, new, bestseller, etc.'
+    comment: 'Product badges: sale, new, bestseller, etc.',
   })
   badges: string[];
 
-  @Column({ 
-    type: 'jsonb', 
+  @Column({
+    type: 'jsonb',
     nullable: true,
-    comment: 'Product specifications according to category schema'
+    comment: 'Product specifications according to category schema',
   })
   specs?: any;
 
-  @Column({ 
-    type: 'text', 
+  @Column({
+    type: 'text',
     name: 'short_description',
-    nullable: true 
+    nullable: true,
   })
   shortDescription?: string;
 
-  @Column({ 
-    type: 'text', 
+  @Column({
+    type: 'text',
     nullable: true,
-    comment: 'Full HTML description'
+    comment: 'Full HTML description',
   })
   description?: string;
 
-  @Column({ 
-    type: 'text', 
+  @Column({
+    type: 'text',
     name: 'datasheet_url',
     nullable: true,
-    comment: 'URL to technical datasheet (PDF)'
+    comment: 'URL to technical datasheet (PDF)',
   })
   datasheetUrl?: string;
 
-  @Column({ 
-    name: 'is_active', 
+  @Column({
+    name: 'is_active',
     default: true,
-    comment: 'Soft delete flag'
+    comment: 'Soft delete flag',
   })
   isActive: boolean;
 
@@ -136,7 +136,9 @@ export class Product {
   @OneToMany(() => ProductOption, (option) => option.product, { cascade: true })
   options: ProductOption[];
 
-  @OneToMany(() => ProductVariant, (variant) => variant.product, { cascade: true })
+  @OneToMany(() => ProductVariant, (variant) => variant.product, {
+    cascade: true,
+  })
   variants: ProductVariant[];
 
   @CreateDateColumn({ name: 'created_at' })

@@ -1357,3 +1357,71 @@ export const ApiPayosWebhook = () =>
       },
     }),
   );
+
+export const ApiCategoryListing = () =>
+  applyDecorators(
+    ApiPublicOperation(
+      'Get categories listing',
+      'Retrieve paginated list of categories with optional filtering by parent or keyword',
+    ),
+    ApiOkResponse({
+      description: 'Categories retrieved successfully',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: {
+            type: 'string',
+            example: 'Lấy dữ liệu danh mục thành công',
+          },
+          data: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: {
+                      type: 'string',
+                      example: 'c-123',
+                    },
+                    name: {
+                      type: 'string',
+                      example: 'Vật liệu xây dựng',
+                    },
+                    slug: {
+                      type: 'string',
+                      example: 'vat-lieu-xay-dung',
+                    },
+                    parentId: {
+                      type: 'string',
+                      nullable: true,
+                      example: null,
+                    },
+                    // optional — nếu sau này muốn mở rộng thêm
+                    // childrenCount: {
+                    //   type: 'number',
+                    //   example: 5,
+                    //   description: 'Số lượng danh mục con (nếu có)',
+                    // },
+                  },
+                },
+              },
+              pagination: {
+                type: 'object',
+                properties: {
+                  page: { type: 'number', example: 1 },
+                  limit: { type: 'number', example: 20 },
+                  total: { type: 'number', example: 57 },
+                  totalPages: { type: 'number', example: 3 },
+                },
+              },
+            },
+          },
+          errors: { type: 'null', example: null },
+          statusCode: { type: 'number', example: 200 },
+        },
+      },
+    }),
+  );
