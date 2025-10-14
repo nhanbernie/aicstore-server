@@ -11,6 +11,7 @@ import {
   ProductVariantOptionValue,
 } from './entities';
 import { Category } from '../categories/entity/category.entity';
+import { VendorsModule } from '../vendors/vendors.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Category } from '../categories/entity/category.entity';
       ProductVariant,
       ProductVariantOptionValue,
     ]),
+    VendorsModule,
   ],
   controllers: [ProductsController],
   providers: [ProductsService],

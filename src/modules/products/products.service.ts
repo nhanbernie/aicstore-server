@@ -28,6 +28,7 @@ import {
 } from './dto';
 import { plainToClass } from 'class-transformer';
 import { ROLE } from '@enums/auth.enums';
+import { VendorsService } from '@vendors/vendors.service';
 
 @Injectable()
 export class ProductsService {
@@ -46,6 +47,7 @@ export class ProductsService {
     private readonly productVariantRepository: Repository<ProductVariant>,
     @InjectRepository(ProductVariantOptionValue)
     private readonly productVariantOptionValueRepository: Repository<ProductVariantOptionValue>,
+    private readonly vendorsService: VendorsService,
   ) {}
 
   async findAll(
@@ -243,11 +245,15 @@ export class ProductsService {
     userId: string,
     userRole: string,
   ): Promise<{ id: string }> {
-    // Check if user can create product for this vendor
-    if (userRole !== ROLE.ADMIN && createProductDto.vendorId !== userId) {
-      throw new ForbiddenException(
-        'Bạn chỉ có thể tạo sản phẩm cho vendor của mình',
-      );
+    // For non-admin users, get their vendor ID and use it
+    let vendorId = createProductDto.vendorId;
+
+    if (userRole !== ROLE.ADMIN) {
+      const vendor = await this.vendorsService.findByUserId(userId);
+      if (!vendor) {
+        throw new ForbiddenException('Bạn chưa có vendor profile');
+      }
+      vendorId = vendor.id; // Use vendor.id, not userId
     }
 
     // Check if slug is unique
@@ -289,7 +295,7 @@ export class ProductsService {
       name: createProductDto.name,
       slug: createProductDto.slug,
       categoryId: createProductDto.categoryId,
-      vendorId: createProductDto.vendorId,
+      vendorId: vendorId,
       brand: createProductDto.brand,
       thumbnail: createProductDto.thumbnail,
       price: createProductDto.price?.toString(),
