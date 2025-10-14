@@ -1,16 +1,16 @@
-import { 
-  IsString, 
-  IsOptional, 
-  IsNumber, 
-  IsBoolean, 
-  IsArray, 
-  IsObject, 
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  IsArray,
+  IsObject,
   IsUUID,
   IsIn,
   Min,
   Max,
   ValidateNested,
-  ArrayMinSize
+  ArrayMinSize,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -31,7 +31,11 @@ export class SpecValueDto {
   @ApiProperty({ example: 800, description: 'Specification value' })
   value: any;
 
-  @ApiProperty({ example: 'W', description: 'Unit of measurement', required: false })
+  @ApiProperty({
+    example: 'W',
+    description: 'Unit of measurement',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   unit?: string;
@@ -48,15 +52,19 @@ export class ProductOptionDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'Kích thước', description: 'Display name', required: false })
+  @ApiProperty({
+    example: 'Kích thước',
+    description: 'Display name',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   displayName?: string;
 
-  @ApiProperty({ 
-    type: [ProductOptionValueDto], 
+  @ApiProperty({
+    type: [ProductOptionValueDto],
     description: 'Option values',
-    example: [{ value: 'M8' }, { value: 'M10' }]
+    example: [{ value: 'M8' }, { value: 'M10' }],
   })
   @IsArray()
   @ValidateNested({ each: true })
@@ -70,20 +78,28 @@ export class ProductVariantDto {
   @IsString()
   sku: string;
 
-  @ApiProperty({ 
-    example: { size: 'M8', length: '50mm' }, 
-    description: 'Option combinations for this variant'
+  @ApiProperty({
+    example: { size: 'M8', length: '50mm' },
+    description: 'Option combinations for this variant',
   })
   @IsObject()
   options: Record<string, string>;
 
-  @ApiProperty({ example: 3500, description: 'Variant-specific price', required: false })
+  @ApiProperty({
+    example: 3500,
+    description: 'Variant-specific price',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   price?: number;
 
-  @ApiProperty({ example: 5000, description: 'Variant stock quantity', required: false })
+  @ApiProperty({
+    example: 5000,
+    description: 'Variant stock quantity',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -113,21 +129,29 @@ export class CreateProductDto {
   @IsUUID()
   vendorId: string;
 
-  @ApiProperty({ example: 'Inox Việt', description: 'Brand name', required: false })
+  @ApiProperty({
+    example: 'Inox Việt',
+    description: 'Brand name',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   brand?: string;
 
-  @ApiProperty({ example: 'https://cdn.example.com/thumb.jpg', description: 'Thumbnail URL', required: false })
+  @ApiProperty({
+    example: 'https://cdn.example.com/thumb.jpg',
+    description: 'Thumbnail URL',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   thumbnail?: string;
 
-  @ApiProperty({ 
-    type: [String], 
-    example: ['https://cdn.example.com/1.jpg'], 
+  @ApiProperty({
+    type: [String],
+    example: ['https://cdn.example.com/1.jpg'],
     description: 'Product images',
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsArray()
@@ -140,50 +164,62 @@ export class CreateProductDto {
   @Min(0)
   price?: number;
 
-  @ApiProperty({ example: 2500, description: 'Sale price in VND', required: false })
+  @ApiProperty({
+    example: 2500,
+    description: 'Sale price in VND',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   salePrice?: number;
 
-  @ApiProperty({ example: 'VND', description: 'Currency code', required: false })
+  @ApiProperty({
+    example: 'VND',
+    description: 'Currency code',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   currency?: string;
 
-  @ApiProperty({ type: StockDto, description: 'Stock information', required: false })
+  @ApiProperty({
+    type: StockDto,
+    description: 'Stock information',
+    required: false,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => StockDto)
   stock?: StockDto;
 
-  @ApiProperty({ 
-    type: [String], 
-    example: ['bestseller', 'sale'], 
+  @ApiProperty({
+    type: [String],
+    example: ['bestseller', 'sale'],
     description: 'Product badges',
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   badges?: string[];
 
-  @ApiProperty({ 
-    example: { 
+  @ApiProperty({
+    example: {
       threadPitch: { value: 1.25, unit: 'mm' },
-      strengthClass: '8.8'
-    }, 
+      strengthClass: '8.8',
+    },
     description: 'Product specifications',
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsObject()
   specs?: Record<string, any>;
 
-  @ApiProperty({ 
-    type: [ProductOptionDto], 
+  @ApiProperty({
+    type: [ProductOptionDto],
     description: 'Product options',
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsArray()
@@ -191,10 +227,10 @@ export class CreateProductDto {
   @Type(() => ProductOptionDto)
   options?: ProductOptionDto[];
 
-  @ApiProperty({ 
-    type: [ProductVariantDto], 
+  @ApiProperty({
+    type: [ProductVariantDto],
     description: 'Product variants',
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsArray()
@@ -202,24 +238,40 @@ export class CreateProductDto {
   @Type(() => ProductVariantDto)
   variants?: ProductVariantDto[];
 
-  @ApiProperty({ example: 'Bu lông chất lượng cao', description: 'Short description', required: false })
+  @ApiProperty({
+    example: 'Bu lông chất lượng cao',
+    description: 'Short description',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   shortDescription?: string;
 
-  @ApiProperty({ example: '<p>Mô tả chi tiết...</p>', description: 'Full HTML description', required: false })
+  @ApiProperty({
+    example: '<p>Mô tả chi tiết...</p>',
+    description: 'Full HTML description',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 'https://cdn.example.com/datasheet.pdf', description: 'Datasheet URL', required: false })
+  @ApiProperty({
+    example: 'https://cdn.example.com/datasheet.pdf',
+    description: 'Datasheet URL',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   datasheetUrl?: string;
 }
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {
-  @ApiProperty({ example: true, description: 'Product active status', required: false })
+  @ApiProperty({
+    example: true,
+    description: 'Product active status',
+    required: false,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
@@ -227,49 +279,75 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
 
 // Query DTOs
 export class SearchProductQueryDto {
-  @ApiProperty({ example: 'bu lông', description: 'Search keyword', required: false })
+  @ApiProperty({
+    example: 'bu lông',
+    description: 'Search keyword',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   q?: string;
 
-  @ApiProperty({ example: 'cat-bolts', description: 'Category ID filter', required: false })
+  @ApiProperty({
+    example: 'cat-bolts',
+    description: 'Category ID filter',
+    required: false,
+  })
   @IsOptional()
   @IsUUID()
   categoryId?: string;
 
-  @ApiProperty({ example: 'Bosch', description: 'Brand filter', required: false })
+  @ApiProperty({
+    example: 'Bosch',
+    description: 'Brand filter',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   brand?: string;
 
-  @ApiProperty({ example: 'v-001', description: 'Vendor ID filter', required: false })
+  @ApiProperty({
+    example: 'v-001',
+    description: 'Vendor ID filter',
+    required: false,
+  })
   @IsOptional()
   @IsUUID()
   vendorId?: string;
 
   @ApiProperty({ example: 1000, description: 'Minimum price', required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   minPrice?: number;
 
-  @ApiProperty({ example: 10000, description: 'Maximum price', required: false })
+  @ApiProperty({
+    example: 10000,
+    description: 'Maximum price',
+    required: false,
+  })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   maxPrice?: number;
 
-  @ApiProperty({ example: true, description: 'Only in-stock products', required: false })
+  @ApiProperty({
+    example: true,
+    description: 'Only in-stock products',
+    required: false,
+  })
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => value === 'true')
   inStock?: boolean;
 
-  @ApiProperty({ 
-    example: 'newest', 
+  @ApiProperty({
+    example: 'newest',
     description: 'Sort order',
     enum: ['newest', 'price_asc', 'price_desc', 'bestselling'],
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsIn(['newest', 'price_asc', 'price_desc', 'bestselling'])
@@ -290,7 +368,11 @@ export class SearchProductQueryDto {
   @Transform(({ value }) => parseInt(value))
   limit?: number;
 
-  @ApiProperty({ example: true, description: 'Include facets for filtering', required: false })
+  @ApiProperty({
+    example: true,
+    description: 'Include facets for filtering',
+    required: false,
+  })
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => value === 'true')
