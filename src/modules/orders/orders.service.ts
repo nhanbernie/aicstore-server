@@ -5,8 +5,9 @@ import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Product } from '@products/entities/product.entity';
 import { ProductVariant } from '@products/entities/product-variant.entity';
-import { CreateOrderDto, UpdateOrderStatusDto, UpdatePaymentStatusDto, OrderFilterDto } from './dto/order.dto';
+import { CreateOrderDto, UpdateOrderStatusDto, UpdatePaymentStatusDto, OrderFilterDto, CheckoutFromCartDto } from './dto/order.dto';
 import { ROLE } from '@enums/auth.enums';
+import { CartService } from '../cart/cart.service';
 
 @Injectable()
 export class OrdersService {
@@ -19,6 +20,7 @@ export class OrdersService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(ProductVariant)
     private readonly productVariantRepository: Repository<ProductVariant>,
+    private readonly cartService: CartService,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
@@ -45,7 +47,7 @@ export class OrdersService {
       if (item.variantId) {
         const variant = await this.productVariantRepository.findOne({
           where: { id: item.variantId },
-          relations: ['optionValues', 'optionValues.option'],
+          relations: ['optionValues', 'optionValues.optionValue', 'optionValues.optionValue.option'],
         });
 
         if (!variant) {
@@ -54,7 +56,7 @@ export class OrdersService {
 
         unitPrice = Number(variant.price);
         sku = variant.sku;
-        variantName = variant.optionValues?.map(ov => (ov as any).value).join(' / ') || null;
+        variantName = variant.optionValues?.map(ov => ov.optionValue?.value).join(' / ') || null;
       }
 
       const totalPrice = Number(unitPrice) * item.quantity;
@@ -121,6 +123,83 @@ export class OrdersService {
 
     // Reload order with items
     return this.findOne(savedOrder.id);
+  }
+
+  async createOrderFromCart(userId: string, checkoutDto: CheckoutFromCartDto): Promise<Order> {
+    // Get user's cart
+    const cart = await this.cartService.getCart(userId);
+    
+    if (!cart.items || cart.items.length === 0) {
+      throw new BadRequestException('Cart is empty. Cannot create order.');
+    }
+
+    // Validate all items are still available and in stock
+    for (const cartItem of cart.items) {
+      // Check product is still active
+      const product = await this.productRepository.findOne({
+        where: { id: cartItem.productId, isActive: true },
+      });
+
+      if (!product) {
+        throw new BadRequestException(
+          `Product "${cartItem.product.name}" is no longer available. Please remove it from cart.`
+        );
+      }
+
+      // Check stock availability
+      if (cartItem.variantId) {
+        const variant = await this.productVariantRepository.findOne({
+          where: { id: cartItem.variantId },
+        });
+
+        if (!variant) {
+          throw new BadRequestException(
+            `Product variant for "${cartItem.product.name}" is no longer available.`
+          );
+        }
+
+        if (variant.stockQty < cartItem.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for "${cartItem.product.name}". Available: ${variant.stockQty}, Requested: ${cartItem.quantity}`
+          );
+        }
+      } else {
+        if (product.stockQty < cartItem.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for "${cartItem.product.name}". Available: ${product.stockQty}, Requested: ${cartItem.quantity}`
+          );
+        }
+      }
+    }
+
+    // Convert cart items to order items format
+    const orderItems = cart.items.map(cartItem => ({
+      productId: cartItem.productId,
+      variantId: cartItem.variantId || undefined,
+      quantity: cartItem.quantity,
+    }));
+
+    // Create order DTO from cart and checkout info
+    const createOrderDto: CreateOrderDto = {
+      items: orderItems,
+      paymentMethod: checkoutDto.paymentMethod,
+      shippingName: checkoutDto.shippingName,
+      shippingPhone: checkoutDto.shippingPhone,
+      shippingAddress: checkoutDto.shippingAddress,
+      shippingCity: checkoutDto.shippingCity,
+      shippingDistrict: checkoutDto.shippingDistrict,
+      shippingWard: checkoutDto.shippingWard,
+      shippingPostalCode: checkoutDto.shippingPostalCode,
+      customerNotes: checkoutDto.customerNotes,
+    };
+
+    // Create the order using existing create method
+    const order = await this.create(userId, createOrderDto);
+
+    // Clear the cart after successful order creation
+    await this.cartService.clearCart(userId);
+
+    return order;
   }
 
   async findAll(filterDto: OrderFilterDto, userRole?: string, userId?: string): Promise<{ orders: Order[]; total: number; page: number; limit: number }> {

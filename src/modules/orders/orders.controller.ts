@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto, UpdateOrderStatusDto, UpdatePaymentStatusDto, OrderFilterDto } from './dto/order.dto';
+import { CreateOrderDto, UpdateOrderStatusDto, UpdatePaymentStatusDto, OrderFilterDto, CheckoutFromCartDto } from './dto/order.dto';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@guards/roles.guard';
 import { Roles } from '@decorators/roles.decorator';
@@ -32,10 +32,40 @@ export class OrdersController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async create(@Request() req, @Body() createOrderDto: CreateOrderDto) {
-    const order = await this.ordersService.create(req.user.sub, createOrderDto);
+    const order = await this.ordersService.create(req.user.userId, createOrderDto);
     return {
       success: true,
       message: 'Đơn hàng đã được tạo thành công',
+      data: order,
+    };
+  }
+
+  @Post('from-cart')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Create order from cart',
+    description: 'Create a new order from all items in the user\'s cart and clear the cart' 
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Order created successfully from cart',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Đơn hàng đã được tạo thành công từ giỏ hàng' },
+        data: { type: 'object' }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - Cart empty or insufficient stock' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async createFromCart(@Request() req, @Body() checkoutDto: CheckoutFromCartDto) {
+    const order = await this.ordersService.createOrderFromCart(req.user.userId, checkoutDto);
+    return {
+      success: true,
+      message: 'Đơn hàng đã được tạo thành công từ giỏ hàng',
       data: order,
     };
   }
@@ -49,7 +79,7 @@ export class OrdersController {
     const result = await this.ordersService.findAll(
       filterDto,
       req.user.roles?.[0],
-      req.user.sub,
+      req.user.userId,
     );
     return {
       success: true,
@@ -71,7 +101,7 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
   async getStatistics(@Request() req) {
     const stats = await this.ordersService.getOrderStatistics(
-      req.user.sub,
+      req.user.userId,
       req.user.roles?.[0],
     );
     return {
@@ -90,7 +120,7 @@ export class OrdersController {
   async findOne(@Request() req, @Param('id') id: string) {
     const order = await this.ordersService.findOne(
       id,
-      req.user.sub,
+      req.user.userId,
       req.user.roles?.[0],
     );
     return {
@@ -109,7 +139,7 @@ export class OrdersController {
   async findByOrderNumber(@Request() req, @Param('orderNumber') orderNumber: string) {
     const order = await this.ordersService.findByOrderNumber(
       orderNumber,
-      req.user.sub,
+      req.user.userId,
       req.user.roles?.[0],
     );
     return {
@@ -167,7 +197,7 @@ export class OrdersController {
   async cancelOrder(@Request() req, @Param('id') id: string) {
     const order = await this.ordersService.cancelOrder(
       id,
-      req.user.sub,
+      req.user.userId,
       req.user.roles?.[0],
     );
     return {

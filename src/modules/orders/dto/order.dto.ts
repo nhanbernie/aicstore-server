@@ -127,3 +127,49 @@ export class OrderFilterDto {
   @Type(() => Number)
   limit?: number = 10;
 }
+
+export class CheckoutFromCartDto {
+  @ApiProperty({ description: 'Payment method', enum: PaymentMethod })
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
+
+  @ApiProperty({ description: 'Shipping name', example: 'Nguyễn Văn A' })
+  @IsString()
+  @IsNotEmpty()
+  shippingName: string;
+
+  @ApiProperty({ description: 'Shipping phone', example: '0901234567' })
+  @IsString()
+  @IsNotEmpty()
+  shippingPhone: string;
+
+  @ApiProperty({ description: 'Shipping address', example: '123 Đường ABC' })
+  @IsString()
+  @IsNotEmpty()
+  shippingAddress: string;
+
+  @ApiPropertyOptional({ description: 'Shipping city', example: 'TP.HCM' })
+  @IsString()
+  @IsOptional()
+  shippingCity?: string;
+
+  @ApiPropertyOptional({ description: 'Shipping district', example: 'Quận 1' })
+  @IsString()
+  @IsOptional()
+  shippingDistrict?: string;
+
+  @ApiPropertyOptional({ description: 'Shipping ward', example: 'Phường Bến Nghé' })
+  @IsString()
+  @IsOptional()
+  shippingWard?: string;
+
+  @ApiPropertyOptional({ description: 'Shipping postal code', example: '700000' })
+  @IsString()
+  @IsOptional()
+  shippingPostalCode?: string;
+
+  @ApiPropertyOptional({ description: 'Customer notes' })
+  @IsString()
+  @IsOptional()
+  customerNotes?: string;
+}
