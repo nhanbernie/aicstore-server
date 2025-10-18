@@ -19,7 +19,7 @@ import {
   ResponseMessage,
   ResponseMessages,
 } from '@/common/decorators/response-message.decorator';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Payments')
 @ApiBearerAuth('JWT-auth')
@@ -30,6 +30,20 @@ export class PaymentsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiCreatePayment()
+  @ApiBody({
+    description: 'Dữ liệu tạo payment',
+    type: CreatePaymentDto,
+    examples: {
+      example1: {
+        summary: 'Ví dụ thanh toán đơn hàng',
+        value: {
+          orderId: '123456',
+          amount: 50000,
+          description: 'Thanh toán đơn hàng #1234',
+        },
+      },
+    },
+  })
   @ResponseMessage(ResponseMessages.PAYMENT_CREATED)
   async createPayment(@Body() createPaymentDto: CreatePaymentDto) {
     try {
