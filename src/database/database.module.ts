@@ -13,6 +13,7 @@ import { ProductOption } from '@/modules/products/entities/product-option.entity
 import { ProductOptionValue } from '@/modules/products/entities/product-option-value.entity';
 import { ProductVariant } from '@/modules/products/entities/product-variant.entity';
 import { ProductVariantOptionValue } from '@/modules/products/entities/product-variant-option-value.entity';
+import { CartItem } from '@/modules';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ProductVariantOptionValue } from '@/modules/products/entities/product-v
           Payment,
           Vendor,
           Category,
+          CartItem,
           Product,
           ProductImage,
           ProductOption,
