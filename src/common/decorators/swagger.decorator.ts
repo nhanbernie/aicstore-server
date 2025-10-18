@@ -1320,11 +1320,17 @@ export const ApiCreatePayment = () =>
           data: {
             type: 'object',
             properties: {
-              paymentUrl: {
-                type: 'string',
-                example: 'https://payos.vn/payment/...',
+              payment: {
+                type: 'object',
+                example: '{}',
               },
-              orderCode: { type: 'string', example: 'ORDER_123456' },
+              payosData: {
+                type: 'object',
+                example: {
+                  paymentUrl: 'https://payos.example.com/pay/abc123',
+                  transactionId: 'txn-xyz-789',
+                },
+              },
             },
           },
           errors: { type: 'null', example: null },
