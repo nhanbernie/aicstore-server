@@ -19,6 +19,18 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Column({ name: 'first_name', nullable: true })
+  firstName?: string;
+
+  @Column({ name: 'last_name', nullable: true })
+  lastName?: string;
+
+  @Column({ name: 'phone_number', nullable: true })
+  phoneNumber?: string;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
+
   @Column({ nullable: true })
   @Exclude()
   password: string;
@@ -38,9 +50,18 @@ export class User {
   updatedAt: Date;
 
   @BeforeInsert()
-  @BeforeUpdate()
-  async hashPassword() {
+  async hashPasswordOnInsert() {
     if (this.password) {
+      const salt = await bcrypt.genSalt(12);
+      this.password = await bcrypt.hash(this.password, salt);
+    }
+  }
+
+  @BeforeUpdate()
+  async hashPasswordOnUpdate() {
+    // Only hash if password is being changed (not already hashed)
+    // bcrypt hashes always start with $2a$, $2b$, or $2y$
+    if (this.password && !this.password.startsWith('$2')) {
       const salt = await bcrypt.genSalt(12);
       this.password = await bcrypt.hash(this.password, salt);
     }
