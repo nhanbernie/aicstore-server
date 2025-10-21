@@ -1,12 +1,26 @@
+import { ROLE } from '@enums/auth.enums';
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ConflictException,
-  BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { VendorsService } from '@vendors/vendors.service';
+import { plainToClass } from 'class-transformer';
+import { Repository } from 'typeorm';
+import { Category } from '../categories/entity/category.entity';
+import {
+  CreateProductDto,
+  FacetsDto,
+  PaginationDto,
+  ProductDetailResponseDto,
+  ProductListingItemDto,
+  ProductListingResponseDto,
+  SearchProductQueryDto,
+  UpdateProductDto,
+} from './dto';
 import {
   Product,
   ProductImage,
@@ -15,20 +29,6 @@ import {
   ProductVariant,
   ProductVariantOptionValue,
 } from './entities';
-import { Category } from '../categories/entity/category.entity';
-import {
-  CreateProductDto,
-  UpdateProductDto,
-  SearchProductQueryDto,
-  ProductListingResponseDto,
-  ProductDetailResponseDto,
-  ProductListingItemDto,
-  FacetsDto,
-  PaginationDto,
-} from './dto';
-import { plainToClass } from 'class-transformer';
-import { ROLE } from '@enums/auth.enums';
-import { VendorsService } from '@vendors/vendors.service';
 
 @Injectable()
 export class ProductsService {
@@ -64,9 +64,7 @@ export class ProductsService {
     return this.findAll({ ...query, vendorId: vendor.id });
   }
 
-  async findAll(
-    query: SearchProductQueryDto,
-  ): Promise<ProductListingResponseDto> {
+  async findAll(query: SearchProductQueryDto): Promise<ProductListingResponseDto> {
     const {
       q,
       categoryId,
@@ -111,21 +109,15 @@ export class ProductsService {
     }
 
     if (minPrice !== undefined) {
-      queryBuilder.andWhere(
-        'COALESCE(product.salePrice, product.price)::bigint >= :minPrice',
-        {
-          minPrice: (minPrice * 1).toString(),
-        },
-      );
+      queryBuilder.andWhere('COALESCE(product.salePrice, product.price)::bigint >= :minPrice', {
+        minPrice: (minPrice * 1).toString(),
+      });
     }
 
     if (maxPrice !== undefined) {
-      queryBuilder.andWhere(
-        'COALESCE(product.salePrice, product.price)::bigint <= :maxPrice',
-        {
-          maxPrice: (maxPrice * 1).toString(),
-        },
-      );
+      queryBuilder.andWhere('COALESCE(product.salePrice, product.price)::bigint <= :maxPrice', {
+        maxPrice: (maxPrice * 1).toString(),
+      });
     }
 
     if (inStock) {
@@ -135,16 +127,10 @@ export class ProductsService {
     // Apply sorting
     switch (sort) {
       case 'price_asc':
-        queryBuilder.orderBy(
-          'COALESCE(product.salePrice, product.price)',
-          'ASC',
-        );
+        queryBuilder.orderBy('COALESCE(product.salePrice, product.price)', 'ASC');
         break;
       case 'price_desc':
-        queryBuilder.orderBy(
-          'COALESCE(product.salePrice, product.price)',
-          'DESC',
-        );
+        queryBuilder.orderBy('COALESCE(product.salePrice, product.price)', 'DESC');
         break;
       case 'bestselling':
         // TODO: Implement based on sales data or view count
@@ -173,9 +159,7 @@ export class ProductsService {
         {
           ...product,
           price: product.price ? parseInt(product.price) : undefined,
-          salePrice: product.salePrice
-            ? parseInt(product.salePrice)
-            : undefined,
+          salePrice: product.salePrice ? parseInt(product.salePrice) : undefined,
           stock: {
             quantity: product.stockQty,
             unit: product.stockUnit,
@@ -372,9 +356,7 @@ export class ProductsService {
 
       // Compare product's vendorId with vendor.id (not userId)
       if (product.vendorId !== vendor.id) {
-        throw new ForbiddenException(
-          'Bạn chỉ có thể cập nhật sản phẩm của mình',
-        );
+        throw new ForbiddenException('Bạn chỉ có thể cập nhật sản phẩm của mình');
       }
     }
 
@@ -400,8 +382,7 @@ export class ProductsService {
     }
 
     // Separate relations and special fields from scalar fields
-    const { options, variants, stock, images, thumbnail, ...scalarFields } =
-      updateProductDto;
+    const { options, variants, stock, images, thumbnail, ...scalarFields } = updateProductDto;
 
     // Update scalar fields
     const updateData: any = { ...scalarFields };
@@ -493,11 +474,7 @@ export class ProductsService {
   async getVariants(productId: string) {
     const variants = await this.productVariantRepository.find({
       where: { productId },
-      relations: [
-        'optionValues',
-        'optionValues.optionValue',
-        'optionValues.optionValue.option',
-      ],
+      relations: ['optionValues', 'optionValues.optionValue', 'optionValues.optionValue.option'],
     });
 
     return variants.map((variant) => ({
@@ -545,10 +522,9 @@ export class ProductsService {
 
     // Apply existing filters (except the ones we're building facets for)
     if (query.q) {
-      baseQuery.andWhere(
-        '(product.name ILIKE :search OR product.shortDescription ILIKE :search)',
-        { search: `%${query.q}%` },
-      );
+      baseQuery.andWhere('(product.name ILIKE :search OR product.shortDescription ILIKE :search)', {
+        search: `%${query.q}%`,
+      });
     }
 
     // Get brand facets
@@ -564,10 +540,7 @@ export class ProductsService {
     // Get price range
     const priceRange = await baseQuery
       .select('MIN(COALESCE(product.salePrice, product.price)::bigint)', 'min')
-      .addSelect(
-        'MAX(COALESCE(product.salePrice, product.price)::bigint)',
-        'max',
-      )
+      .addSelect('MAX(COALESCE(product.salePrice, product.price)::bigint)', 'max')
       .getRawOne();
 
     return {
@@ -584,9 +557,7 @@ export class ProductsService {
     };
   }
 
-  private transformToDetailResponse(
-    product: Product,
-  ): ProductDetailResponseDto {
+  private transformToDetailResponse(product: Product): ProductDetailResponseDto {
     return plainToClass(
       ProductDetailResponseDto,
       {
@@ -607,15 +578,12 @@ export class ProductsService {
     );
   }
 
-  private buildVariantOptions(
-    optionValues: ProductVariantOptionValue[],
-  ): Record<string, string> {
+  private buildVariantOptions(optionValues: ProductVariantOptionValue[]): Record<string, string> {
     const options: Record<string, string> = {};
 
     for (const variantOption of optionValues) {
       if (variantOption.optionValue?.option) {
-        options[variantOption.optionValue.option.name] =
-          variantOption.optionValue.value;
+        options[variantOption.optionValue.option.name] = variantOption.optionValue.value;
       }
     }
 
@@ -668,9 +636,7 @@ export class ProductsService {
         });
 
         // Link variant to option values
-        for (const [optionName, optionValue] of Object.entries(
-          variantDto.options,
-        )) {
+        for (const [optionName, optionValue] of Object.entries(variantDto.options)) {
           const valueId = valueMap.get(`${optionName}:${optionValue}`);
           if (valueId) {
             await this.productVariantOptionValueRepository.save({

@@ -1,19 +1,17 @@
+import { Vendor } from '@vendors/entity/vendor.schema';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Category } from '../../categories/entity/category.entity';
-import { Vendor } from '@vendors/entity/vendor.schema';
-import { ProductImage } from './product-image.entity';
-import { ProductOption } from './product-option.entity';
-import { ProductVariant } from './product-variant.entity';
+import { ProductImage, ProductOption, ProductVariant } from './';
 
 @Entity('products')
 @Index(['slug'], { unique: true })

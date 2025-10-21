@@ -1,7 +1,8 @@
+import { CloudinaryService } from '@common/services/cloudinary.service';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProductsService } from './products.service';
-import { ProductsController } from './products.controller';
+import { Category } from '../categories/entity/category.entity';
+import { VendorsModule } from '../vendors/vendors.module';
 import {
   Product,
   ProductImage,
@@ -10,9 +11,8 @@ import {
   ProductVariant,
   ProductVariantOptionValue,
 } from './entities';
-import { Category } from '../categories/entity/category.entity';
-import { VendorsModule } from '../vendors/vendors.module';
-import { CloudinaryService } from '@common/services/cloudinary.service';
+import { ProductsController } from './products.controller';
+import { ProductsService } from './products.service';
 
 @Module({
   imports: [
