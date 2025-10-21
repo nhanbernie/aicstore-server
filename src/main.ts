@@ -36,14 +36,13 @@ async function bootstrap() {
     }),
   );
 
-  // Enable CORS
+  // NOTE: CORS Configuration
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4050'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
+    // origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4050'],
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    // credentials: true,
   });
 
   // Swagger Configuration
