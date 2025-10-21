@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { VendorsService } from './vendors.service';
+import { VendorStatus } from '@enums/vendor-status.enum';
 import {
   CreateVendorDto,
   UpdateVendorDto,
@@ -46,10 +47,10 @@ import {
 @Controller('vendors')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class VendorsController {
-  constructor(private readonly vendorsService: VendorsService) {}
+  constructor(private readonly vendorsService: VendorsService) { }
 
   @Post()
-  @Roles(ROLE.USER) // Only regular users can become vendors
+  @Roles(ROLE.USER) 
   @ResponseMessage(ResponseMessages.VENDOR_CREATED)
   @ApiCreateVendor()
   async create(
@@ -73,7 +74,7 @@ export class VendorsController {
     @Query('status') status?: string,
   ): Promise<VendorResponseDto[]> {
     const vendors = status
-      ? await this.vendorsService.getVendorsByStatus(status)
+      ? await this.vendorsService.getVendorsByStatus(status as VendorStatus)
       : await this.vendorsService.findAll();
 
     return vendors.map((vendor) =>

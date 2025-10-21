@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '@users/entity/user.schema';
 import { Vendor } from '@vendors/entity/vendor.schema';
+import { VendorStatus } from '@enums/vendor-status.enum';
 import { Order } from '@modules/orders/entities/order.entity';
 import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import {
@@ -48,7 +49,7 @@ export class SeedService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
-  ) {}
+  ) { }
 
   async seedAll(): Promise<void> {
     this.logger.log('Starting database seeding...');
@@ -134,10 +135,11 @@ export class SeedService {
         continue;
       }
 
-      const { userEmail, ...vendorInfo } = vendorData;
+      const { userEmail, status, ...vendorInfo } = vendorData;
       const vendor = this.vendorRepository.create({
         ...vendorInfo,
         userId: user.id,
+        status: status as VendorStatus,
       });
 
       await this.vendorRepository.save(vendor);
@@ -303,7 +305,7 @@ export class SeedService {
     for (const orderData of ordersData) {
       // Create order (exclude items and null values)
       const { items, ...orderFields } = orderData;
-      
+
       const order = this.orderRepository.create({
         ...orderFields,
         userId,

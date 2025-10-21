@@ -12,14 +12,14 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { ROLE } from '../../common/enums/auth.enums';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { ROLE } from '@/common/enums/auth.enums';
 import { plainToClass } from 'class-transformer';
 import {
   ResponseMessage,
   ResponseMessages,
-} from '../../common/decorators/response-message.decorator';
+} from '@/common/decorators/response-message.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)

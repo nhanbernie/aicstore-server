@@ -7,6 +7,7 @@ import {
   OneToOne,
   JoinColumn,
 } from 'typeorm';
+import { VendorStatus } from '@enums/vendor-status.enum';
 import { User } from '@users/entity/user.schema';
 
 @Entity('vendors')
@@ -35,8 +36,12 @@ export class Vendor {
   @Column({ nullable: true })
   taxId: string;
 
-  @Column({ default: 'pending' })
-  status: string; // pending, approved, rejected, suspended
+  @Column({
+    type: 'enum',
+    enum: VendorStatus,
+    default: VendorStatus.PENDING,
+  })
+  status: VendorStatus; 
 
   @Column()
   userId: string;

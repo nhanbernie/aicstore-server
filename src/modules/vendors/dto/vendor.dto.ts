@@ -1,5 +1,5 @@
 import { IsString, IsEmail, IsOptional, IsIn } from 'class-validator';
-import { Exclude, Expose } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 // Base vendor properties
@@ -67,7 +67,6 @@ export class CreateVendorDto extends BaseVendorDto {}
 
 export class UpdateVendorDto extends PartialType(BaseVendorDto) {
   // Vendor không được phép update status - chỉ admin mới được
-  // Status chỉ được thay đổi qua các endpoint riêng: approve, reject, suspend
 }
 
 export class AdminUpdateVendorDto extends PartialType(BaseVendorDto) {
