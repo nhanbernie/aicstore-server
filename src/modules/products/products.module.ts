@@ -12,6 +12,7 @@ import {
 } from './entities';
 import { Category } from '../categories/entity/category.entity';
 import { VendorsModule } from '../vendors/vendors.module';
+import { CloudinaryService } from '@common/services/cloudinary.service';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { VendorsModule } from '../vendors/vendors.module';
     VendorsModule,
   ],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, CloudinaryService],
   exports: [ProductsService],
 })
 export class ProductsModule {}

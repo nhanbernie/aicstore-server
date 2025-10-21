@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -147,5 +148,24 @@ export class AuthService {
       // Nếu có lỗi, trả về null
       return null;
     }
+  }
+
+  async getUserProfile(userId: string) {
+    // Get fresh user data from database
+    const user = await this.usersService.findById(userId);
+    
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Get vendor status if user has VENDOR role
+    const approvedStatus = await this.getVendorStatus(user);
+
+    return {
+      userId: user.id,
+      email: user.email,
+      roles: user.roles,
+      approvedStatus,
+    };
   }
 }

@@ -13,6 +13,7 @@ import configuration from './config/configuration';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { Payment, PaymentsModule } from './modules/payments';
+import { QuoteRequestsModule } from './modules/quote-requests';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { Payment, PaymentsModule } from './modules/payments';
     AuthModule,
     CategoriesModule,
     AdminModule,
+    QuoteRequestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

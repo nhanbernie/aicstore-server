@@ -12,12 +12,15 @@ import {
   ValidateNested,
   ArrayMinSize,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Type, Transform, plainToClass } from 'class-transformer';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 // Base DTOs for nested objects
 export class StockDto {
   @ApiProperty({ example: 1000, description: 'Stock quantity' })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? parseFloat(value) : value,
+  )
   @IsNumber()
   @Min(0)
   quantity: number;
@@ -65,6 +68,17 @@ export class ProductOptionDto {
     type: [ProductOptionValueDto],
     description: 'Option values',
     example: [{ value: 'M8' }, { value: 'M10' }],
+  })
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) {
+      return value.map((item) => {
+        if (typeof item === 'object' && item !== null) {
+          return plainToClass(ProductOptionValueDto, item);
+        }
+        return item;
+      });
+    }
+    return value;
   })
   @IsArray()
   @ValidateNested({ each: true })
@@ -125,9 +139,15 @@ export class CreateProductDto {
   @IsUUID()
   categoryId: string;
 
-  @ApiProperty({ example: 'v-001', description: 'Vendor ID' })
+  @ApiProperty({
+    example: 'v-001',
+    description:
+      'Vendor ID (Optional for VENDOR role - auto-detected, Required for ADMIN)',
+    required: false,
+  })
+  @IsOptional()
   @IsUUID()
-  vendorId: string;
+  vendorId?: string;
 
   @ApiProperty({
     example: 'Inox Việt',
@@ -189,6 +209,20 @@ export class CreateProductDto {
     required: false,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return plainToClass(StockDto, parsed);
+      } catch {
+        return value;
+      }
+    }
+    if (value && typeof value === 'object') {
+      return plainToClass(StockDto, value);
+    }
+    return value;
+  })
   @ValidateNested()
   @Type(() => StockDto)
   stock?: StockDto;
@@ -200,6 +234,20 @@ export class CreateProductDto {
     required: false,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+      } catch {
+        return [value];
+      }
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  })
   @IsArray()
   @IsString({ each: true })
   badges?: string[];
@@ -213,30 +261,88 @@ export class CreateProductDto {
     required: false,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed;
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  })
   @IsObject()
   specs?: Record<string, any>;
 
   @ApiProperty({
     type: [ProductOptionDto],
     description: 'Product options',
-    required: false,
+    example: [
+      {
+        name: 'size',
+        displayName: 'Kích thước',
+        values: [{ value: 'M8' }, { value: 'M10' }],
+      },
+    ],
   })
-  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => plainToClass(ProductOptionDto, item));
+        }
+        return [plainToClass(ProductOptionDto, value)];
+      } catch {
+        return [value];
+      }
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => plainToClass(ProductOptionDto, item));
+    }
+    return [plainToClass(ProductOptionDto, value)];
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProductOptionDto)
-  options?: ProductOptionDto[];
+  @ArrayMinSize(1)
+  options: ProductOptionDto[];
 
   @ApiProperty({
     type: [ProductVariantDto],
     description: 'Product variants',
-    required: false,
+    example: [
+      {
+        sku: 'BOLT-M8-50',
+        options: { size: 'M8', length: '50mm' },
+        price: 3000,
+        stockQty: 500,
+      },
+    ],
   })
-  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => plainToClass(ProductVariantDto, item));
+        }
+        return [plainToClass(ProductVariantDto, value)];
+      } catch {
+        return [value];
+      }
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => plainToClass(ProductVariantDto, item));
+    }
+    return [plainToClass(ProductVariantDto, value)];
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProductVariantDto)
-  variants?: ProductVariantDto[];
+  @ArrayMinSize(1)
+  variants: ProductVariantDto[];
 
   @ApiProperty({
     example: 'Bu lông chất lượng cao',

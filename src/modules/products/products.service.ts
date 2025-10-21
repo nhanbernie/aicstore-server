@@ -50,6 +50,20 @@ export class ProductsService {
     private readonly vendorsService: VendorsService,
   ) {}
 
+  async getMyProducts(
+    query: SearchProductQueryDto,
+    userId: string,
+  ): Promise<ProductListingResponseDto> {
+    // Get vendor from userId
+    const vendor = await this.vendorsService.findByUserId(userId);
+    if (!vendor) {
+      throw new ForbiddenException('Bạn chưa có vendor profile');
+    }
+
+    // Use vendor.id to filter products
+    return this.findAll({ ...query, vendorId: vendor.id });
+  }
+
   async findAll(
     query: SearchProductQueryDto,
   ): Promise<ProductListingResponseDto> {
@@ -349,8 +363,19 @@ export class ProductsService {
     }
 
     // Check permissions
-    if (userRole !== ROLE.ADMIN && product.vendorId !== userId) {
-      throw new ForbiddenException('Bạn chỉ có thể cập nhật sản phẩm của mình');
+    if (userRole !== ROLE.ADMIN) {
+      // For VENDOR, get their vendorId from userId
+      const vendor = await this.vendorsService.findByUserId(userId);
+      if (!vendor) {
+        throw new ForbiddenException('Bạn chưa có vendor profile');
+      }
+
+      // Compare product's vendorId with vendor.id (not userId)
+      if (product.vendorId !== vendor.id) {
+        throw new ForbiddenException(
+          'Bạn chỉ có thể cập nhật sản phẩm của mình',
+        );
+      }
     }
 
     // Check slug uniqueness if changed
@@ -363,20 +388,77 @@ export class ProductsService {
       }
     }
 
-    // Update product
-    const updateData: any = { ...updateProductDto };
+    if (updateProductDto.categoryId) {
+      const category = await this.categoryRepository.findOne({
+        where: { id: updateProductDto.categoryId },
+      });
+      if (!category) {
+        throw new BadRequestException(
+          `Danh mục với ID "${updateProductDto.categoryId}" không tồn tại.`,
+        );
+      }
+    }
+
+    // Separate relations and special fields from scalar fields
+    const { options, variants, stock, images, thumbnail, ...scalarFields } =
+      updateProductDto;
+
+    // Update scalar fields
+    const updateData: any = { ...scalarFields };
+
+    // Handle thumbnail (scalar field, not relation)
+    if (thumbnail !== undefined) {
+      updateData.thumbnail = thumbnail;
+    }
+
     if (updateProductDto.price !== undefined) {
       updateData.price = updateProductDto.price.toString();
     }
     if (updateProductDto.salePrice !== undefined) {
       updateData.salePrice = updateProductDto.salePrice.toString();
     }
-    if (updateProductDto.stock) {
-      updateData.stockQty = updateProductDto.stock.quantity;
-      updateData.stockUnit = updateProductDto.stock.unit;
+    if (stock) {
+      updateData.stockQty = stock.quantity;
+      updateData.stockUnit = stock.unit;
+      delete updateData.stock; // Remove stock object
     }
 
+    // Update scalar fields only (no relations)
     await this.productRepository.update(id, updateData);
+
+    // Handle images if provided (one-to-many relation)
+    if (images !== undefined) {
+      // Delete existing images
+      await this.productImageRepository.delete({ productId: id });
+
+      // Create new images
+      if (images.length > 0) {
+        const imageEntities = images.map((url, index) =>
+          this.productImageRepository.create({
+            productId: id,
+            url,
+            position: index + 1,
+          }),
+        );
+        await this.productImageRepository.save(imageEntities);
+      }
+    }
+
+    // Handle options and variants if provided
+    if (options || variants) {
+      // Delete existing options and variants
+      await this.productOptionRepository.delete({ productId: id });
+      await this.productVariantRepository.delete({ productId: id });
+
+      // Create new options and variants if both provided
+      if (options && variants) {
+        const dtoWithOptionsAndVariants = {
+          options,
+          variants,
+        } as CreateProductDto;
+        await this.createOptionsAndVariants(id, dtoWithOptionsAndVariants);
+      }
+    }
 
     return { id };
   }
@@ -391,8 +473,17 @@ export class ProductsService {
     }
 
     // Check permissions
-    if (userRole !== ROLE.ADMIN && product.vendorId !== userId) {
-      throw new ForbiddenException('Bạn chỉ có thể xóa sản phẩm của mình');
+    if (userRole !== ROLE.ADMIN) {
+      // For VENDOR, get their vendorId from userId
+      const vendor = await this.vendorsService.findByUserId(userId);
+      if (!vendor) {
+        throw new ForbiddenException('Bạn chưa có vendor profile');
+      }
+
+      // Compare product's vendorId with vendor.id (not userId)
+      if (product.vendorId !== vendor.id) {
+        throw new ForbiddenException('Bạn chỉ có thể xóa sản phẩm của mình');
+      }
     }
 
     // Soft delete

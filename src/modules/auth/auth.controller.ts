@@ -94,13 +94,10 @@ export class AuthController {
   @ApiGetProfile()
   @ResponseMessage(ResponseMessages.PROFILE_RETRIEVED)
   async getProfile(@Request() req) {
-    // Lấy vendor status nếu user có role VENDOR
-    const approvedStatus = await this.authService.getVendorStatus(req.user);
-
-    return {
-      ...req.user,
-      approvedStatus,
-    };
+    // Get fresh user data from database instead of relying on JWT payload
+    const user = await this.authService.getUserProfile(req.user.userId);
+    
+    return user;
   }
 
   @Post('forgot-password')
