@@ -10,4 +10,4 @@ import { User } from './entity/user.schema';
   providers: [UsersService],
   exports: [UsersService],
 })
-export class UsersModule {}
+export class UsersModule { }

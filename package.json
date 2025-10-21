@@ -28,7 +28,9 @@
     "seed:run": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
     "seed": "npm run seed:run seed",
     "seed:clear": "npm run seed:run clear",
-    "seed:refresh": "npm run seed:run refresh"
+    "seed:refresh": "npm run seed:run refresh",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -42,6 +44,10 @@
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/typeorm": "^11.0.0",
     "@types/multer": "^2.0.0",
+    "prettier": "^3.3.3",
+    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "prettier-plugin-organize-imports": "^3.2.4",
+    "prettier-plugin-packagejson": "^2.5.3",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
