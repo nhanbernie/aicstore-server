@@ -1,11 +1,21 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
+import { Order, OrderStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Product } from '@products/entities/product.entity';
 import { ProductVariant } from '@products/entities/product-variant.entity';
-import { CreateOrderDto, UpdateOrderStatusDto, UpdatePaymentStatusDto, OrderFilterDto, CheckoutFromCartDto } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  UpdateOrderStatusDto,
+  OrderFilterDto,
+  CheckoutFromCartDto,
+} from './dto/order.dto';
 import { ROLE } from '@enums/auth.enums';
 import { CartService } from '../cart/cart.service';
 
@@ -37,7 +47,9 @@ export class OrdersService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Product with ID ${item.productId} not found`);
+        throw new NotFoundException(
+          `Product with ID ${item.productId} not found`,
+        );
       }
 
       let unitPrice: number = Number(product.salePrice || product.price);
@@ -47,16 +59,25 @@ export class OrdersService {
       if (item.variantId) {
         const variant = await this.productVariantRepository.findOne({
           where: { id: item.variantId },
-          relations: ['optionValues', 'optionValues.optionValue', 'optionValues.optionValue.option'],
+          relations: [
+            'optionValues',
+            'optionValues.optionValue',
+            'optionValues.optionValue.option',
+          ],
         });
 
         if (!variant) {
-          throw new NotFoundException(`Variant with ID ${item.variantId} not found`);
+          throw new NotFoundException(
+            `Variant with ID ${item.variantId} not found`,
+          );
         }
 
         unitPrice = Number(variant.price);
         sku = variant.sku;
-        variantName = variant.optionValues?.map(ov => ov.optionValue?.value).join(' / ') || null;
+        variantName =
+          variant.optionValues
+            ?.map((ov) => ov.optionValue?.value)
+            .join(' / ') || null;
       }
 
       const totalPrice = Number(unitPrice) * item.quantity;
@@ -91,8 +112,8 @@ export class OrdersService {
       orderNumber,
       userId,
       status: OrderStatus.PENDING,
-      paymentStatus: PaymentStatus.PENDING,
-      paymentMethod: createOrderDto.paymentMethod,
+      // paymentStatus: PaymentStatus.PENDING,
+      // paymentMethod: createOrderDto.paymentMethod,
       subtotal,
       shippingFee,
       taxAmount,
@@ -125,10 +146,13 @@ export class OrdersService {
     return this.findOne(savedOrder.id);
   }
 
-  async createOrderFromCart(userId: string, checkoutDto: CheckoutFromCartDto): Promise<Order> {
+  async createOrderFromCart(
+    userId: string,
+    checkoutDto: CheckoutFromCartDto,
+  ): Promise<Order> {
     // Get user's cart
     const cart = await this.cartService.getCart(userId);
-    
+
     if (!cart.items || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty. Cannot create order.');
     }
@@ -142,7 +166,7 @@ export class OrdersService {
 
       if (!product) {
         throw new BadRequestException(
-          `Product "${cartItem.product.name}" is no longer available. Please remove it from cart.`
+          `Product "${cartItem.product.name}" is no longer available. Please remove it from cart.`,
         );
       }
 
@@ -154,26 +178,26 @@ export class OrdersService {
 
         if (!variant) {
           throw new BadRequestException(
-            `Product variant for "${cartItem.product.name}" is no longer available.`
+            `Product variant for "${cartItem.product.name}" is no longer available.`,
           );
         }
 
         if (variant.stockQty < cartItem.quantity) {
           throw new BadRequestException(
-            `Insufficient stock for "${cartItem.product.name}". Available: ${variant.stockQty}, Requested: ${cartItem.quantity}`
+            `Insufficient stock for "${cartItem.product.name}". Available: ${variant.stockQty}, Requested: ${cartItem.quantity}`,
           );
         }
       } else {
         if (product.stockQty < cartItem.quantity) {
           throw new BadRequestException(
-            `Insufficient stock for "${cartItem.product.name}". Available: ${product.stockQty}, Requested: ${cartItem.quantity}`
+            `Insufficient stock for "${cartItem.product.name}". Available: ${product.stockQty}, Requested: ${cartItem.quantity}`,
           );
         }
       }
     }
 
     // Convert cart items to order items format
-    const orderItems = cart.items.map(cartItem => ({
+    const orderItems = cart.items.map((cartItem) => ({
       productId: cartItem.productId,
       variantId: cartItem.variantId || undefined,
       quantity: cartItem.quantity,
@@ -182,7 +206,6 @@ export class OrdersService {
     // Create order DTO from cart and checkout info
     const createOrderDto: CreateOrderDto = {
       items: orderItems,
-      paymentMethod: checkoutDto.paymentMethod,
       shippingName: checkoutDto.shippingName,
       shippingPhone: checkoutDto.shippingPhone,
       shippingAddress: checkoutDto.shippingAddress,
@@ -202,8 +225,18 @@ export class OrdersService {
     return order;
   }
 
-  async findAll(filterDto: OrderFilterDto, userRole?: string, userId?: string): Promise<{ orders: Order[]; total: number; page: number; limit: number }> {
-    const { status, paymentStatus, orderNumber, page = 1, limit = 10 } = filterDto;
+  async findAll(
+    filterDto: OrderFilterDto,
+    userRole?: string,
+    userId?: string,
+  ): Promise<{ orders: Order[]; total: number; page: number; limit: number }> {
+    const {
+      status,
+      paymentStatus,
+      orderNumber,
+      page = 1,
+      limit = 10,
+    } = filterDto;
     let { userId: filterUserId } = filterDto;
 
     // If user is not admin, only show their orders
@@ -223,7 +256,9 @@ export class OrdersService {
     }
 
     if (paymentStatus) {
-      queryBuilder.andWhere('order.paymentStatus = :paymentStatus', { paymentStatus });
+      queryBuilder.andWhere('order.paymentStatus = :paymentStatus', {
+        paymentStatus,
+      });
     }
 
     if (filterUserId) {
@@ -231,7 +266,9 @@ export class OrdersService {
     }
 
     if (orderNumber) {
-      queryBuilder.andWhere('order.orderNumber ILIKE :orderNumber', { orderNumber: `%${orderNumber}%` });
+      queryBuilder.andWhere('order.orderNumber ILIKE :orderNumber', {
+        orderNumber: `%${orderNumber}%`,
+      });
     }
 
     queryBuilder
@@ -249,7 +286,11 @@ export class OrdersService {
     };
   }
 
-  async findOne(id: string, userId?: string, userRole?: string): Promise<Order> {
+  async findOne(
+    id: string,
+    userId?: string,
+    userRole?: string,
+  ): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['items', 'items.product', 'items.variant', 'user'],
@@ -261,13 +302,19 @@ export class OrdersService {
 
     // Check if user has permission to view this order
     if (userRole !== ROLE.ADMIN && userId && order.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to view this order');
+      throw new ForbiddenException(
+        'You do not have permission to view this order',
+      );
     }
 
     return order;
   }
 
-  async findByOrderNumber(orderNumber: string, userId?: string, userRole?: string): Promise<Order> {
+  async findByOrderNumber(
+    orderNumber: string,
+    userId?: string,
+    userRole?: string,
+  ): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { orderNumber },
       relations: ['items', 'items.product', 'items.variant', 'user'],
@@ -279,13 +326,18 @@ export class OrdersService {
 
     // Check if user has permission to view this order
     if (userRole !== ROLE.ADMIN && userId && order.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to view this order');
+      throw new ForbiddenException(
+        'You do not have permission to view this order',
+      );
     }
 
     return order;
   }
 
-  async updateStatus(id: string, updateStatusDto: UpdateOrderStatusDto): Promise<Order> {
+  async updateStatus(
+    id: string,
+    updateStatusDto: UpdateOrderStatusDto,
+  ): Promise<Order> {
     const order = await this.findOne(id);
 
     order.status = updateStatusDto.status;
@@ -299,29 +351,45 @@ export class OrdersService {
     }
 
     // Set actual delivery date when status is delivered
-    if (updateStatusDto.status === OrderStatus.DELIVERED && !order.actualDelivery) {
+    if (
+      updateStatusDto.status === OrderStatus.DELIVERED &&
+      !order.actualDelivery
+    ) {
       order.actualDelivery = new Date();
     }
 
     // Auto update payment status to PAID when delivered
-    if (updateStatusDto.status === OrderStatus.DELIVERED && order.paymentMethod === 'cod') {
-      order.paymentStatus = PaymentStatus.PAID;
-    }
+    // if (
+    //   updateStatusDto.status === OrderStatus.DELIVERED &&
+    //   order.paymentMethod === 'cod'
+    // ) {
+    //   order.paymentStatus = PaymentStatus.PAID;
+    // }
 
     return this.orderRepository.save(order);
   }
 
-  async updatePaymentStatus(id: string, updatePaymentDto: UpdatePaymentStatusDto): Promise<Order> {
-    const order = await this.findOne(id);
-    order.paymentStatus = updatePaymentDto.paymentStatus;
-    return this.orderRepository.save(order);
-  }
+  // async updatePaymentStatus(
+  //   id: string,
+  //   updatePaymentDto: UpdatePaymentStatusDto,
+  // ): Promise<Order> {
+  //   const order = await this.findOne(id);
+  //   order.paymentStatus = updatePaymentDto.paymentStatus;
+  //   return this.orderRepository.save(order);
+  // }
 
-  async cancelOrder(id: string, userId?: string, userRole?: string): Promise<Order> {
+  async cancelOrder(
+    id: string,
+    userId?: string,
+    userRole?: string,
+  ): Promise<Order> {
     const order = await this.findOne(id, userId, userRole);
 
     // Only allow cancellation for pending or processing orders
-    if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PROCESSING) {
+    if (
+      order.status !== OrderStatus.PENDING &&
+      order.status !== OrderStatus.PROCESSING
+    ) {
       throw new BadRequestException('Cannot cancel order at current status');
     }
 
@@ -336,21 +404,32 @@ export class OrdersService {
       queryBuilder.where('order.userId = :userId', { userId });
     }
 
-    const [
-      total,
-      pending,
-      processing,
-      shipping,
-      delivered,
-      cancelled,
-    ] = await Promise.all([
-      queryBuilder.getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.PENDING }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.PROCESSING }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.SHIPPING }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.DELIVERED }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.CANCELLED }).getCount(),
-    ]);
+    const [total, pending, processing, shipping, delivered, cancelled] =
+      await Promise.all([
+        queryBuilder.getCount(),
+        queryBuilder
+          .clone()
+          .andWhere('order.status = :status', { status: OrderStatus.PENDING })
+          .getCount(),
+        queryBuilder
+          .clone()
+          .andWhere('order.status = :status', {
+            status: OrderStatus.PROCESSING,
+          })
+          .getCount(),
+        queryBuilder
+          .clone()
+          .andWhere('order.status = :status', { status: OrderStatus.SHIPPING })
+          .getCount(),
+        queryBuilder
+          .clone()
+          .andWhere('order.status = :status', { status: OrderStatus.DELIVERED })
+          .getCount(),
+        queryBuilder
+          .clone()
+          .andWhere('order.status = :status', { status: OrderStatus.CANCELLED })
+          .getCount(),
+      ]);
 
     return {
       total,
@@ -367,7 +446,9 @@ export class OrdersService {
   private async generateOrderNumber(): Promise<string> {
     const prefix = 'AIC';
     const timestamp = Date.now().toString();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
     return `${prefix}${timestamp.slice(-9)}${random}`;
   }
 }

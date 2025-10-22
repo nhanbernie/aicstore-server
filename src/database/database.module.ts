@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { User } from '../modules/users/entity/user.schema';
 import { RefreshToken } from '../modules/auth/entity/refresh-token.schema';
 import { PasswordResetToken } from '@/modules/auth/entity/password-reset.schema';
-import { Payment } from '@/modules/payments';
+import { Payment } from '@/modules/payments/entitiy/payment.entity';
 import { Vendor } from '@/modules/vendors/entity/vendor.schema';
 import { Category } from '@/modules/categories/entity/category.entity';
 import { Product } from '@/modules/products/entities/product.entity';

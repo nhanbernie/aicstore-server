@@ -17,6 +17,7 @@ import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import { Category } from '@/modules/categories/entity/category.entity';
 import { SeedService } from './seed.service';
 import configuration from '@config/configuration';
+import { Payment } from '@/modules/payments/entitiy/payment.entity';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import configuration from '@config/configuration';
       ProductVariantOptionValue,
       Order,
       OrderItem,
+      Payment,
     ]),
   ],
   providers: [SeedService],

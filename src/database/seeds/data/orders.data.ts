@@ -1,11 +1,11 @@
-import { OrderStatus, PaymentStatus, PaymentMethod } from '@modules/orders/entities/order.entity';
+import { OrderStatus } from '@modules/orders/entities/order.entity';
 
 export const ordersData = [
   {
     orderNumber: 'AIC202501001',
     status: OrderStatus.PENDING,
-    paymentStatus: PaymentStatus.PENDING,
-    paymentMethod: PaymentMethod.COD,
+    // paymentStatus: PaymentStatus.PENDING,
+    // paymentMethod: PaymentMethod.COD,
     subtotal: 165000,
     shippingFee: 30000,
     taxAmount: 0,
@@ -38,8 +38,8 @@ export const ordersData = [
   {
     orderNumber: 'AIC202501002',
     status: OrderStatus.PROCESSING,
-    paymentStatus: PaymentStatus.PENDING,
-    paymentMethod: PaymentMethod.BANK_TRANSFER,
+    // paymentStatus: PaymentStatus.PENDING,
+    // paymentMethod: PaymentMethod.BANK_TRANSFER,
     subtotal: 890000,
     shippingFee: 50000,
     taxAmount: 0,
@@ -72,8 +72,8 @@ export const ordersData = [
   {
     orderNumber: 'AIC202501003',
     status: OrderStatus.SHIPPING,
-    paymentStatus: PaymentStatus.PAID,
-    paymentMethod: PaymentMethod.E_WALLET,
+    // paymentStatus: PaymentStatus.PAID,
+    // paymentMethod: PaymentMethod.E_WALLET,
     subtotal: 4500000,
     shippingFee: 0,
     taxAmount: 0,
@@ -106,8 +106,8 @@ export const ordersData = [
   {
     orderNumber: 'AIC202501004',
     status: OrderStatus.DELIVERED,
-    paymentStatus: PaymentStatus.PAID,
-    paymentMethod: PaymentMethod.COD,
+    // paymentStatus: PaymentStatus.PAID,
+    // paymentMethod: PaymentMethod.COD,
     subtotal: 135000,
     shippingFee: 25000,
     taxAmount: 0,
@@ -140,8 +140,8 @@ export const ordersData = [
   {
     orderNumber: 'AIC202501005',
     status: OrderStatus.CANCELLED,
-    paymentStatus: PaymentStatus.PENDING,
-    paymentMethod: PaymentMethod.COD,
+    // paymentStatus: PaymentStatus.PENDING,
+    // paymentMethod: PaymentMethod.COD,
     subtotal: 320000,
     shippingFee: 30000,
     taxAmount: 0,

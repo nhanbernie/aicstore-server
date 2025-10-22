@@ -4,8 +4,11 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
-import { PaymentStatus } from '../enum/payment-status.enum';
+import { PaymentMethod, PaymentStatus } from '../enum/payment-status.enum';
+import { Order } from '@/modules/orders/entities/order.entity';
 
 @Entity('payments')
 export class Payment {
@@ -14,6 +17,10 @@ export class Payment {
 
   @Column()
   orderId: string;
+
+  @OneToOne(() => Order, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'orderId', referencedColumnName: 'orderNumber' })
+  order: Order;
 
   @Column({ nullable: true })
   transactionId: string;
@@ -32,13 +39,15 @@ export class Payment {
   status: PaymentStatus;
 
   @Column({
-    default: 'PAYOS',
+    type: 'enum',
+    enum: PaymentMethod,
+    default: PaymentMethod.E_WALLET,
   })
   paymentMethod: string;
 
   // Lưu chữ ký để đối chiếu
   @Column({ type: 'text', nullable: true })
-  signature: string;
+  signature: string | null;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -47,5 +56,5 @@ export class Payment {
   updatedAt: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  paidAt: Date;
+  paidAt: Date | null;
 }

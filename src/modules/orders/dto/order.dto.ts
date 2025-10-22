@@ -1,7 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsString, IsNumber, IsOptional, IsArray, ValidateNested, IsUUID, Min, IsNotEmpty } from 'class-validator';
+import {
+  IsEnum,
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsUUID,
+  Min,
+  IsNotEmpty,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { OrderStatus, PaymentMethod, PaymentStatus } from '../entities/order.entity';
+import { OrderStatus } from '../entities/order.entity';
+import {
+  PaymentMethod,
+  PaymentStatus,
+} from '@/modules/payments/enum/payment-status.enum';
 
 export class CreateOrderItemDto {
   @ApiProperty({ description: 'Product ID', example: 'uuid' })
@@ -26,10 +40,6 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
-
-  @ApiProperty({ description: 'Payment method', enum: PaymentMethod })
-  @IsEnum(PaymentMethod)
-  paymentMethod: PaymentMethod;
 
   @ApiProperty({ description: 'Shipping name', example: 'Nguyễn Văn A' })
   @IsString()
@@ -56,12 +66,18 @@ export class CreateOrderDto {
   @IsOptional()
   shippingDistrict?: string;
 
-  @ApiPropertyOptional({ description: 'Shipping ward', example: 'Phường Bến Nghé' })
+  @ApiPropertyOptional({
+    description: 'Shipping ward',
+    example: 'Phường Bến Nghé',
+  })
   @IsString()
   @IsOptional()
   shippingWard?: string;
 
-  @ApiPropertyOptional({ description: 'Shipping postal code', example: '700000' })
+  @ApiPropertyOptional({
+    description: 'Shipping postal code',
+    example: '700000',
+  })
   @IsString()
   @IsOptional()
   shippingPostalCode?: string;
@@ -88,19 +104,16 @@ export class UpdateOrderStatusDto {
   notes?: string;
 }
 
-export class UpdatePaymentStatusDto {
-  @ApiProperty({ description: 'Payment status', enum: PaymentStatus })
-  @IsEnum(PaymentStatus)
-  paymentStatus: PaymentStatus;
-}
-
 export class OrderFilterDto {
   @ApiPropertyOptional({ description: 'Filter by status', enum: OrderStatus })
   @IsEnum(OrderStatus)
   @IsOptional()
   status?: OrderStatus;
 
-  @ApiPropertyOptional({ description: 'Filter by payment status', enum: PaymentStatus })
+  @ApiPropertyOptional({
+    description: 'Filter by payment status',
+    enum: PaymentStatus,
+  })
   @IsEnum(PaymentStatus)
   @IsOptional()
   paymentStatus?: PaymentStatus;
@@ -121,7 +134,11 @@ export class OrderFilterDto {
   @Type(() => Number)
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Items per page', example: 10, default: 10 })
+  @ApiPropertyOptional({
+    description: 'Items per page',
+    example: 10,
+    default: 10,
+  })
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
@@ -158,12 +175,18 @@ export class CheckoutFromCartDto {
   @IsOptional()
   shippingDistrict?: string;
 
-  @ApiPropertyOptional({ description: 'Shipping ward', example: 'Phường Bến Nghé' })
+  @ApiPropertyOptional({
+    description: 'Shipping ward',
+    example: 'Phường Bến Nghé',
+  })
   @IsString()
   @IsOptional()
   shippingWard?: string;
 
-  @ApiPropertyOptional({ description: 'Shipping postal code', example: '700000' })
+  @ApiPropertyOptional({
+    description: 'Shipping postal code',
+    example: '700000',
+  })
   @IsString()
   @IsOptional()
   shippingPostalCode?: string;

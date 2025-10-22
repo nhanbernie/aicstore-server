@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '@users/entity/user.schema';
 import { Vendor } from '@vendors/entity/vendor.schema';
-import { Order } from '@modules/orders/entities/order.entity';
+import { Order, OrderStatus } from '@modules/orders/entities/order.entity';
 import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import {
   Product,
@@ -20,6 +20,9 @@ import { usersData } from './data/users.data';
 import { vendorsData } from './data/vendors.data';
 import { productsData } from './data/products.data';
 import { ordersData } from './data/orders.data';
+import { Payment } from '@/modules/payments/entitiy/payment.entity';
+import { v4 as uuid } from 'uuid';
+import { PaymentMethod, PaymentStatus } from '@/modules/payments';
 
 @Injectable()
 export class SeedService {
@@ -48,6 +51,8 @@ export class SeedService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
   ) {}
 
   async seedAll(): Promise<void> {
@@ -66,6 +71,7 @@ export class SeedService {
       await this.seedCategories();
       await this.seedProducts();
       await this.seedOrders();
+      await this.seedPayments();
 
       this.logger.log('Database seeding completed successfully!');
     } catch (error) {
@@ -87,7 +93,9 @@ export class SeedService {
       // Clear tables in reverse order
       await queryRunner.query('TRUNCATE TABLE "order_items" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "orders" CASCADE;');
-      await queryRunner.query('TRUNCATE TABLE "product_variant_option_values" CASCADE;');
+      await queryRunner.query(
+        'TRUNCATE TABLE "product_variant_option_values" CASCADE;',
+      );
 
       await queryRunner.query('TRUNCATE TABLE "product_variants" CASCADE;');
       await queryRunner.query(
@@ -100,6 +108,8 @@ export class SeedService {
       await queryRunner.query('TRUNCATE TABLE "vendors" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "users" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "refresh_tokens" CASCADE;');
+      await queryRunner.query('TRUNCATE TABLE "payments" CASCADE;');
+      await queryRunner.query('TRUNCATE TABLE "orders" CASCADE;');
 
       await queryRunner.query('SET session_replication_role = DEFAULT;');
 
@@ -303,7 +313,7 @@ export class SeedService {
     for (const orderData of ordersData) {
       // Create order (exclude items and null values)
       const { items, ...orderFields } = orderData;
-      
+
       const order = this.orderRepository.create({
         ...orderFields,
         userId,
@@ -335,5 +345,61 @@ export class SeedService {
     }
 
     this.logger.log(`Seeded ${ordersData.length} orders successfully!`);
+  }
+
+  async seedPayments() {
+    this.logger.log('🚀 Seeding payments...');
+
+    const payments: Payment[] = [];
+
+    for (const order of ordersData) {
+      // ✅ Tự động xác định trạng thái thanh toán dựa vào trạng thái đơn hàng
+      let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
+
+      switch (order.status) {
+        case OrderStatus.DELIVERED:
+          paymentStatus = PaymentStatus.SUCCESS;
+          break;
+        case OrderStatus.CANCELLED:
+          paymentStatus = PaymentStatus.CANCELLED;
+          break;
+        case OrderStatus.SHIPPING:
+        case OrderStatus.PROCESSING:
+        case OrderStatus.PENDING:
+          paymentStatus = PaymentStatus.PENDING;
+          break;
+        default:
+          paymentStatus = PaymentStatus.PENDING;
+      }
+
+      const paymentMethods = [
+        PaymentMethod.COD,
+        PaymentMethod.BANK_TRANSFER,
+        PaymentMethod.CREDIT_CARD,
+        PaymentMethod.E_WALLET,
+      ];
+      const randomMethod =
+        paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+
+      const payment = this.paymentRepository.create({
+        id: uuid(),
+        orderId: order.orderNumber,
+        transactionId: `TXN-${Math.floor(Math.random() * 1000000)}`,
+        amount: order.totalAmount,
+        currency: order.currency,
+        status: paymentStatus,
+        paymentMethod: randomMethod,
+        signature: null,
+        paidAt:
+          paymentStatus === PaymentStatus.SUCCESS
+            ? order.actualDelivery || new Date()
+            : undefined,
+      });
+
+      payments.push(payment);
+    }
+
+    await this.paymentRepository.save(payments);
+    this.logger.log(`✅ Seeded ${payments.length} payments successfully!`);
   }
 }

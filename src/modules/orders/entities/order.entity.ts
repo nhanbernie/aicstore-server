@@ -20,19 +20,19 @@ export enum OrderStatus {
   REFUNDED = 'refunded',
 }
 
-export enum PaymentStatus {
-  PENDING = 'pending',
-  PAID = 'paid',
-  FAILED = 'failed',
-  REFUNDED = 'refunded',
-}
+// export enum PaymentStatus {
+//   PENDING = 'pending',
+//   PAID = 'paid',
+//   FAILED = 'failed',
+//   REFUNDED = 'refunded',
+// }
 
-export enum PaymentMethod {
-  COD = 'cod',
-  BANK_TRANSFER = 'bank_transfer',
-  CREDIT_CARD = 'credit_card',
-  E_WALLET = 'e_wallet',
-}
+// export enum PaymentMethod {
+//   COD = 'cod',
+//   BANK_TRANSFER = 'bank_transfer',
+//   CREDIT_CARD = 'credit_card',
+//   E_WALLET = 'e_wallet',
+// }
 
 @Entity('orders')
 export class Order {
@@ -56,32 +56,50 @@ export class Order {
   })
   status: OrderStatus;
 
-  @Column({
-    name: 'payment_status',
-    type: 'enum',
-    enum: PaymentStatus,
-    default: PaymentStatus.PENDING,
-  })
-  paymentStatus: PaymentStatus;
+  // @Column({
+  //   name: 'payment_status',
+  //   type: 'enum',
+  //   enum: PaymentStatus,
+  //   default: PaymentStatus.PENDING,
+  // })
+  // paymentStatus: PaymentStatus;
 
-  @Column({
-    name: 'payment_method',
-    type: 'enum',
-    enum: PaymentMethod,
-    default: PaymentMethod.COD,
-  })
-  paymentMethod: PaymentMethod;
+  // @Column({
+  //   name: 'payment_method',
+  //   type: 'enum',
+  //   enum: PaymentMethod,
+  //   default: PaymentMethod.COD,
+  // })
+  // paymentMethod: PaymentMethod;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   subtotal: number;
 
-  @Column({ name: 'shipping_fee', type: 'decimal', precision: 12, scale: 2, default: 0 })
+  @Column({
+    name: 'shipping_fee',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+  })
   shippingFee: number;
 
-  @Column({ name: 'tax_amount', type: 'decimal', precision: 12, scale: 2, default: 0 })
+  @Column({
+    name: 'tax_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+  })
   taxAmount: number;
 
-  @Column({ name: 'discount_amount', type: 'decimal', precision: 12, scale: 2, default: 0 })
+  @Column({
+    name: 'discount_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+  })
   discountAmount: number;
 
   @Column({ name: 'total_amount', type: 'decimal', precision: 12, scale: 2 })
@@ -100,19 +118,44 @@ export class Order {
   @Column({ name: 'shipping_address', type: 'text' })
   shippingAddress: string;
 
-  @Column({ name: 'shipping_city', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'shipping_city',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   shippingCity: string;
 
-  @Column({ name: 'shipping_district', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'shipping_district',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   shippingDistrict: string;
 
-  @Column({ name: 'shipping_ward', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'shipping_ward',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   shippingWard: string;
 
-  @Column({ name: 'shipping_postal_code', type: 'varchar', length: 20, nullable: true })
+  @Column({
+    name: 'shipping_postal_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   shippingPostalCode: string;
 
-  @Column({ name: 'tracking_number', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'tracking_number',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   trackingNumber: string;
 
   @Column({ name: 'estimated_delivery', type: 'timestamp', nullable: true })

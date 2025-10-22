@@ -12,6 +12,7 @@ import { CartModule } from './modules/cart/cart.module';
 import configuration from './config/configuration';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { Payment, PaymentsModule } from './modules/payments';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { Payment, PaymentsModule } from './modules/payments';
     CartModule,
     AuthModule,
     CategoriesModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
