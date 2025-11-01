@@ -81,6 +81,42 @@ export class VendorsController {
     );
   }
 
+  @Get('application-status')
+  @Roles(ROLE.USER, ROLE.VENDOR)
+  @ResponseMessage('Vendor application status retrieved')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get vendor application status',
+    description: 'Get the current status of vendor application (for USER or VENDOR role)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Application status retrieved successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'No vendor application found',
+  })
+  async getApplicationStatus(@Request() req) {
+    const vendor = await this.vendorsService.findByUserId(req.user.userId);
+
+    if (!vendor) {
+      return {
+        success: false,
+        message: 'Chưa có đơn đăng ký vendor',
+        data: null,
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Lấy trạng thái đơn đăng ký thành công',
+      data: plainToClass(VendorResponseDto, vendor, {
+        excludeExtraneousValues: true,
+      }),
+    };
+  }
+
   @Get('my-profile')
   @Roles(ROLE.VENDOR)
   @ResponseMessage(ResponseMessages.VENDOR_FOUND)

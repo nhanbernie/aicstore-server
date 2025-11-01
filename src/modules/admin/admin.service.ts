@@ -85,7 +85,7 @@ export class AdminService {
 
     // Low Stock Products (stock < 10)
     const lowStockProducts = await this.productRepository.count({
-      where: { stockQty: MoreThan(0) }
+      where: { stockQty: LessThan(10), isActive: true }
     });
 
     // Today Revenue

@@ -33,8 +33,8 @@ export class VendorsService {
       throw new ConflictException('User already has a vendor profile');
     }
 
-    // Update user role to vendor
-    await this.usersService.update(userId, { roles: [ROLE.VENDOR] });
+    // NOTE: User role remains as USER until admin approves
+    // Role will be changed to VENDOR only when status is APPROVED
 
     const vendor = this.vendorsRepository.create({
       ...createVendorDto,
@@ -109,18 +109,31 @@ export class VendorsService {
 
   async approveVendor(id: string): Promise<Vendor> {
     const vendor = await this.findById(id);
+    
+    // Change user role to VENDOR when approved
+    await this.usersService.update(vendor.userId, { roles: [ROLE.VENDOR] });
+    
     vendor.status = VendorStatus.APPROVED;
     return this.vendorsRepository.save(vendor);
   }
 
   async rejectVendor(id: string): Promise<Vendor> {
     const vendor = await this.findById(id);
+    
+    // Keep user role as USER when rejected
+    // If they were previously approved, change back to USER
+    await this.usersService.update(vendor.userId, { roles: [ROLE.USER] });
+    
     vendor.status = VendorStatus.REJECTED;
     return this.vendorsRepository.save(vendor);
   }
 
   async suspendVendor(id: string): Promise<Vendor> {
     const vendor = await this.findById(id);
+    
+    // Change user role back to USER when suspended
+    await this.usersService.update(vendor.userId, { roles: [ROLE.USER] });
+    
     vendor.status = VendorStatus.SUSPENDED;
     return this.vendorsRepository.save(vendor);
   }
