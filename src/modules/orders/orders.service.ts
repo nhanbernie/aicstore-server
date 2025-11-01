@@ -1,13 +1,24 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
-import { OrderItem } from './entities/order-item.entity';
-import { Product } from '@products/entities/product.entity';
-import { ProductVariant } from '@products/entities/product-variant.entity';
-import { CreateOrderDto, UpdateOrderStatusDto, UpdatePaymentStatusDto, OrderFilterDto, CheckoutFromCartDto } from './dto/order.dto';
 import { ROLE } from '@enums/auth.enums';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ProductVariant } from '@products/entities/product-variant.entity';
+import { Product } from '@products/entities/product.entity';
+import { Repository } from 'typeorm';
 import { CartService } from '../cart/cart.service';
+import {
+  CheckoutFromCartDto,
+  CreateOrderDto,
+  OrderFilterDto,
+  UpdateOrderStatusDto,
+  UpdatePaymentStatusDto,
+} from './dto/order.dto';
+import { OrderItem } from './entities/order-item.entity';
+import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 
 @Injectable()
 export class OrdersService {
@@ -43,20 +54,39 @@ export class OrdersService {
       let unitPrice: number = Number(product.salePrice || product.price);
       let variantName: string | null = null;
       let sku: string | null = null;
+      let variant: ProductVariant | null = null;
 
       if (item.variantId) {
-        const variant = await this.productVariantRepository.findOne({
+        variant = await this.productVariantRepository.findOne({
           where: { id: item.variantId },
-          relations: ['optionValues', 'optionValues.optionValue', 'optionValues.optionValue.option'],
+          relations: [
+            'optionValues',
+            'optionValues.optionValue',
+            'optionValues.optionValue.option',
+          ],
         });
 
         if (!variant) {
           throw new NotFoundException(`Variant with ID ${item.variantId} not found`);
         }
 
+        // Check variant stock
+        if (variant.stockQty < item.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for product variant "${product.name}". Available: ${variant.stockQty}, Requested: ${item.quantity}`,
+          );
+        }
+
         unitPrice = Number(variant.price);
         sku = variant.sku;
-        variantName = variant.optionValues?.map(ov => ov.optionValue?.value).join(' / ') || null;
+        variantName = variant.optionValues?.map((ov) => ov.optionValue?.value).join(' / ') || null;
+      } else {
+        // Check product stock
+        if (product.stockQty < item.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for product "${product.name}". Available: ${product.stockQty}, Requested: ${item.quantity}`,
+          );
+        }
       }
 
       const totalPrice = Number(unitPrice) * item.quantity;
@@ -112,13 +142,34 @@ export class OrdersService {
 
     const savedOrder = await this.orderRepository.save(order);
 
-    // Create order items
-    for (const itemData of orderItems) {
+    // Create order items and deduct stock
+    for (let i = 0; i < orderItems.length; i++) {
+      const itemData = orderItems[i];
+      const orderItemDto = createOrderDto.items[i];
+
+      // Create order item
       const orderItem = this.orderItemRepository.create({
         ...itemData,
         orderId: savedOrder.id,
       });
       await this.orderItemRepository.save(orderItem);
+
+      // Deduct stock from product or variant
+      if (orderItemDto.variantId) {
+        // Deduct from variant
+        await this.productVariantRepository.decrement(
+          { id: orderItemDto.variantId },
+          'stockQty',
+          orderItemDto.quantity,
+        );
+      } else {
+        // Deduct from product
+        await this.productRepository.decrement(
+          { id: orderItemDto.productId },
+          'stockQty',
+          orderItemDto.quantity,
+        );
+      }
     }
 
     // Reload order with items
@@ -128,7 +179,7 @@ export class OrdersService {
   async createOrderFromCart(userId: string, checkoutDto: CheckoutFromCartDto): Promise<Order> {
     // Get user's cart
     const cart = await this.cartService.getCart(userId);
-    
+
     if (!cart.items || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty. Cannot create order.');
     }
@@ -142,7 +193,7 @@ export class OrdersService {
 
       if (!product) {
         throw new BadRequestException(
-          `Product "${cartItem.product.name}" is no longer available. Please remove it from cart.`
+          `Product "${cartItem.product.name}" is no longer available. Please remove it from cart.`,
         );
       }
 
@@ -154,26 +205,26 @@ export class OrdersService {
 
         if (!variant) {
           throw new BadRequestException(
-            `Product variant for "${cartItem.product.name}" is no longer available.`
+            `Product variant for "${cartItem.product.name}" is no longer available.`,
           );
         }
 
         if (variant.stockQty < cartItem.quantity) {
           throw new BadRequestException(
-            `Insufficient stock for "${cartItem.product.name}". Available: ${variant.stockQty}, Requested: ${cartItem.quantity}`
+            `Insufficient stock for "${cartItem.product.name}". Available: ${variant.stockQty}, Requested: ${cartItem.quantity}`,
           );
         }
       } else {
         if (product.stockQty < cartItem.quantity) {
           throw new BadRequestException(
-            `Insufficient stock for "${cartItem.product.name}". Available: ${product.stockQty}, Requested: ${cartItem.quantity}`
+            `Insufficient stock for "${cartItem.product.name}". Available: ${product.stockQty}, Requested: ${cartItem.quantity}`,
           );
         }
       }
     }
 
     // Convert cart items to order items format
-    const orderItems = cart.items.map(cartItem => ({
+    const orderItems = cart.items.map((cartItem) => ({
       productId: cartItem.productId,
       variantId: cartItem.variantId || undefined,
       quantity: cartItem.quantity,
@@ -202,7 +253,11 @@ export class OrdersService {
     return order;
   }
 
-  async findAll(filterDto: OrderFilterDto, userRole?: string, userId?: string): Promise<{ orders: Order[]; total: number; page: number; limit: number }> {
+  async findAll(
+    filterDto: OrderFilterDto,
+    userRole?: string,
+    userId?: string,
+  ): Promise<{ orders: Order[]; total: number; page: number; limit: number }> {
     const { status, paymentStatus, orderNumber, page = 1, limit = 10 } = filterDto;
     let { userId: filterUserId } = filterDto;
 
@@ -231,7 +286,9 @@ export class OrdersService {
     }
 
     if (orderNumber) {
-      queryBuilder.andWhere('order.orderNumber ILIKE :orderNumber', { orderNumber: `%${orderNumber}%` });
+      queryBuilder.andWhere('order.orderNumber ILIKE :orderNumber', {
+        orderNumber: `%${orderNumber}%`,
+      });
     }
 
     queryBuilder
@@ -247,6 +304,68 @@ export class OrdersService {
       page,
       limit,
     };
+  }
+
+  /**
+   * Find orders for a given vendor (orders that contain at least one product from this vendor)
+   */
+  async findByVendor(
+    vendorId: string,
+    filterDto: OrderFilterDto,
+  ): Promise<{ orders: Order[]; total: number; page: number; limit: number }> {
+    const { status, paymentStatus, orderNumber, page = 1, limit = 10 } = filterDto;
+
+    const queryBuilder = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('items.variant', 'variant')
+      .leftJoinAndSelect('order.user', 'user')
+      .where('product.vendorId = :vendorId', { vendorId });
+
+    if (status) {
+      queryBuilder.andWhere('order.status = :status', { status });
+    }
+
+    if (paymentStatus) {
+      queryBuilder.andWhere('order.paymentStatus = :paymentStatus', { paymentStatus });
+    }
+
+    if (orderNumber) {
+      queryBuilder.andWhere('order.orderNumber ILIKE :orderNumber', {
+        orderNumber: `%${orderNumber}%`,
+      });
+    }
+
+    queryBuilder
+      .orderBy('order.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [orders, total] = await queryBuilder.getManyAndCount();
+
+    return { orders, total, page, limit };
+  }
+
+  async findOneForVendor(orderId: string, vendorId: string): Promise<Order> {
+    const order = await this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('items.variant', 'variant')
+      .leftJoinAndSelect('order.user', 'user')
+      .where('order.id = :orderId', { orderId })
+      .andWhere('product.vendorId = :vendorId', { vendorId })
+      .getOne();
+
+    if (!order) {
+      throw new NotFoundException(`Order not found or does not contain your products`);
+    }
+
+    // Filter items to only show vendor's products
+    order.items = order.items.filter((item) => item.product?.vendorId === vendorId);
+
+    return order;
   }
 
   async findOne(id: string, userId?: string, userRole?: string): Promise<Order> {
@@ -336,20 +455,28 @@ export class OrdersService {
       queryBuilder.where('order.userId = :userId', { userId });
     }
 
-    const [
-      total,
-      pending,
-      processing,
-      shipping,
-      delivered,
-      cancelled,
-    ] = await Promise.all([
+    const [total, pending, processing, shipping, delivered, cancelled] = await Promise.all([
       queryBuilder.getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.PENDING }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.PROCESSING }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.SHIPPING }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.DELIVERED }).getCount(),
-      queryBuilder.clone().andWhere('order.status = :status', { status: OrderStatus.CANCELLED }).getCount(),
+      queryBuilder
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.PENDING })
+        .getCount(),
+      queryBuilder
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.PROCESSING })
+        .getCount(),
+      queryBuilder
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.SHIPPING })
+        .getCount(),
+      queryBuilder
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.DELIVERED })
+        .getCount(),
+      queryBuilder
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.CANCELLED })
+        .getCount(),
     ]);
 
     return {
@@ -364,10 +491,125 @@ export class OrdersService {
     };
   }
 
+  async getVendorStatistics(vendorId: string): Promise<any> {
+    // Get all orders that contain vendor's products
+    const ordersQuery = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoin('order.items', 'items')
+      .leftJoin('items.product', 'product')
+      .where('product.vendorId = :vendorId', { vendorId });
+
+    // Total orders containing vendor products
+    const totalOrders = await ordersQuery.getCount();
+
+    // Orders by status
+    const [pending, processing, shipping, delivered, cancelled] = await Promise.all([
+      ordersQuery
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.PENDING })
+        .getCount(),
+      ordersQuery
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.PROCESSING })
+        .getCount(),
+      ordersQuery
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.SHIPPING })
+        .getCount(),
+      ordersQuery
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.DELIVERED })
+        .getCount(),
+      ordersQuery
+        .clone()
+        .andWhere('order.status = :status', { status: OrderStatus.CANCELLED })
+        .getCount(),
+    ]);
+
+    // Get unique customers who bought vendor's products
+    const customersResult = await this.orderRepository
+      .createQueryBuilder('order')
+      .select('order.userId', 'userId')
+      .addSelect('user.email', 'email')
+      .addSelect('user.firstName', 'firstName')
+      .addSelect('user.lastName', 'lastName')
+      .leftJoin('order.items', 'items')
+      .leftJoin('items.product', 'product')
+      .leftJoin('order.user', 'user')
+      .where('product.vendorId = :vendorId', { vendorId })
+      .andWhere('order.status != :cancelledStatus', { cancelledStatus: OrderStatus.CANCELLED })
+      .groupBy('order.userId')
+      .addGroupBy('user.email')
+      .addGroupBy('user.firstName')
+      .addGroupBy('user.lastName')
+      .getRawMany();
+
+    const totalCustomers = customersResult.length;
+
+    // Calculate total revenue from vendor's products
+    const revenueResult = await this.orderItemRepository
+      .createQueryBuilder('item')
+      .select('SUM(item.totalPrice)', 'totalRevenue')
+      .leftJoin('item.product', 'product')
+      .leftJoin('item.order', 'order')
+      .where('product.vendorId = :vendorId', { vendorId })
+      .andWhere('order.status = :deliveredStatus', { deliveredStatus: OrderStatus.DELIVERED })
+      .andWhere('order.paymentStatus = :paidStatus', { paidStatus: PaymentStatus.PAID })
+      .getRawOne();
+
+    const totalRevenue = Number(revenueResult?.totalRevenue || 0);
+
+    // Get top selling products
+    const topProducts = await this.orderItemRepository
+      .createQueryBuilder('item')
+      .select('item.productId', 'productId')
+      .addSelect('item.productName', 'productName')
+      .addSelect('item.thumbnail', 'thumbnail')
+      .addSelect('SUM(item.quantity)', 'totalQuantity')
+      .addSelect('SUM(item.totalPrice)', 'totalRevenue')
+      .leftJoin('item.product', 'product')
+      .leftJoin('item.order', 'order')
+      .where('product.vendorId = :vendorId', { vendorId })
+      .andWhere('order.status != :cancelledStatus', { cancelledStatus: OrderStatus.CANCELLED })
+      .groupBy('item.productId')
+      .addGroupBy('item.productName')
+      .addGroupBy('item.thumbnail')
+      .orderBy('SUM(item.quantity)', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    return {
+      totalOrders,
+      totalCustomers,
+      totalRevenue,
+      ordersByStatus: {
+        pending,
+        processing,
+        shipping,
+        delivered,
+        cancelled,
+      },
+      topProducts: topProducts.map((p) => ({
+        productId: p.productId,
+        productName: p.productName,
+        thumbnail: p.thumbnail,
+        totalQuantity: Number(p.totalQuantity),
+        totalRevenue: Number(p.totalRevenue),
+      })),
+      customers: customersResult.map((c) => ({
+        userId: c.userId,
+        email: c.email,
+        name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'N/A',
+      })),
+    };
+  }
+
   private async generateOrderNumber(): Promise<string> {
     const prefix = 'AIC';
     const timestamp = Date.now().toString();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
     return `${prefix}${timestamp.slice(-9)}${random}`;
   }
 }

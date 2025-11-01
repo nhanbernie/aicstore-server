@@ -369,7 +369,7 @@ export class ProductsService {
         throw new ConflictException('Slug đã tồn tại');
       }
     }
-
+    // Validate categoryId if provided
     if (updateProductDto.categoryId) {
       const category = await this.categoryRepository.findOne({
         where: { id: updateProductDto.categoryId },
@@ -381,27 +381,103 @@ export class ProductsService {
       }
     }
 
+    // Handle vendorId validation
+    if (updateProductDto.vendorId) {
+      // VENDOR role cannot change vendorId - remove it from update
+      if (userRole === ROLE.VENDOR) {
+        delete updateProductDto.vendorId;
+      } else {
+        // For ADMIN: validate if vendor exists (use try-catch to handle NotFoundException)
+        try {
+          const vendorExists = await this.vendorsService.findById(updateProductDto.vendorId);
+          console.log('Vendor found:', vendorExists.businessName);
+        } catch (error) {
+          if (error instanceof NotFoundException) {
+            throw new BadRequestException(
+              `Vendor với ID "${updateProductDto.vendorId}" không tồn tại trong hệ thống. Lưu ý: vendorId phải là ID của vendor (không phải userId).`,
+            );
+          }
+          throw error;
+        }
+      }
+    }
+
     // Separate relations and special fields from scalar fields
-    const { options, variants, stock, images, thumbnail, ...scalarFields } = updateProductDto;
+    const { options, variants, stock, images, thumbnail, specs, ...scalarFields } =
+      updateProductDto;
 
-    // Update scalar fields
-    const updateData: any = { ...scalarFields };
+    // Build update data object
+    const updateData: any = {};
 
-    // Handle thumbnail (scalar field, not relation)
+    // Add scalar fields (excluding any potential relation objects)
+    Object.keys(scalarFields).forEach((key) => {
+      const value = scalarFields[key];
+      // Only add primitive values, skip objects (except null), undefined, and empty strings for foreign keys
+      if (value === undefined) return;
+
+      // For foreign key fields (categoryId, vendorId), reject empty strings
+      if ((key === 'categoryId' || key === 'vendorId') && value === '') {
+        throw new BadRequestException(`${key} không được để trống`);
+      }
+
+      // Skip objects (except null)
+      if (typeof value === 'object' && value !== null) return;
+
+      updateData[key] = value;
+    });
+
+    // Handle specific fields
     if (thumbnail !== undefined) {
       updateData.thumbnail = thumbnail;
+    }
+
+    if (specs !== undefined) {
+      updateData.specs = specs;
     }
 
     if (updateProductDto.price !== undefined) {
       updateData.price = updateProductDto.price.toString();
     }
+
     if (updateProductDto.salePrice !== undefined) {
       updateData.salePrice = updateProductDto.salePrice.toString();
     }
+
     if (stock) {
       updateData.stockQty = stock.quantity;
       updateData.stockUnit = stock.unit;
-      delete updateData.stock; // Remove stock object
+    }
+
+    // Ensure no relation objects are included
+    delete updateData.category;
+    delete updateData.vendor;
+    delete updateData.stock;
+
+    // Final validation before update - check if foreign keys exist
+    if (updateData.categoryId) {
+      const categoryCheck = await this.categoryRepository.findOne({
+        where: { id: updateData.categoryId },
+      });
+      if (!categoryCheck) {
+        throw new BadRequestException(
+          `Category ID "${updateData.categoryId}" không tồn tại trong database`,
+        );
+      }
+      console.log('✅ Final check: Category exists');
+    }
+
+    if (updateData.vendorId) {
+      try {
+        const vendorCheck = await this.vendorsService.findById(updateData.vendorId);
+        console.log('✅ Final check: Vendor exists');
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          throw new BadRequestException(
+            `❌ Vendor ID "${updateData.vendorId}" không tồn tại trong database`,
+          );
+        }
+        throw error;
+      }
     }
 
     // Update scalar fields only (no relations)

@@ -6,8 +6,9 @@ import {
   Request,
   Get,
   Query,
+  Patch,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
   ApiRegister,
   ApiLogin,
@@ -35,6 +36,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
 } from './dto/auth-response.dto';
+import { UpdateProfileDto } from '../users/dto/user.dto';
 import { PasswordResetService } from './services/password-reset.service';
 
 @ApiTags('Authentication')
@@ -98,6 +100,27 @@ export class AuthController {
     const user = await this.authService.getUserProfile(req.user.userId);
     
     return user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Update user profile',
+    description: 'Allows logged-in users to update their own profile (firstName, lastName, phoneNumber)' 
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Profile updated successfully' 
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Unauthorized - Invalid or missing token' 
+  })
+  @ResponseMessage('Cập nhật profile thành công')
+  async updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    const updatedUser = await this.authService.updateUserProfile(req.user.userId, updateProfileDto);
+    return updatedUser;
   }
 
   @Post('forgot-password')

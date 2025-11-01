@@ -166,6 +166,30 @@ export class AuthService {
       email: user.email,
       roles: user.roles,
       approvedStatus,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
+  }
+
+  async updateUserProfile(userId: string, updateDto: any) {
+    // User can only update their own profile
+    const user = await this.usersService.findById(userId);
+    
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Update user profile (only allowed fields)
+    const updatedUser = await this.usersService.update(userId, {
+      firstName: updateDto.firstName,
+      lastName: updateDto.lastName,
+      phoneNumber: updateDto.phoneNumber,
+    });
+
+    return this.getUserProfile(userId);
   }
 }

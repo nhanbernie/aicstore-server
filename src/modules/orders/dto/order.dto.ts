@@ -72,6 +72,35 @@ export class CreateOrderDto {
   customerNotes?: string;
 }
 
+export class VendorOrderFilterDto {
+  @ApiPropertyOptional({ description: 'Filter by status', enum: OrderStatus })
+  @IsEnum(OrderStatus)
+  @IsOptional()
+  status?: OrderStatus;
+
+  @ApiPropertyOptional({ description: 'Filter by payment status', enum: PaymentStatus })
+  @IsEnum(PaymentStatus)
+  @IsOptional()
+  paymentStatus?: PaymentStatus;
+
+  @ApiPropertyOptional({ description: 'Search by order number' })
+  @IsString()
+  @IsOptional()
+  orderNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Page number', example: 1, default: 1 })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: 'Items per page', example: 10, default: 10 })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  limit?: number = 10;
+}
+
 export class UpdateOrderStatusDto {
   @ApiProperty({ description: 'Order status', enum: OrderStatus })
   @IsEnum(OrderStatus)
