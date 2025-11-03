@@ -7,7 +7,9 @@ import {
   Get,
   Query,
   Patch,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
   ApiRegister,
@@ -19,6 +21,8 @@ import {
   ApiForgotPassword,
   ApiVerifyResetToken,
   ApiResetPassword,
+  ApiGoogleLogin,
+  ApiGoogleCallback,
 } from '../../common/decorators/swagger.decorator';
 import {
   ResponseMessage,
@@ -27,6 +31,8 @@ import {
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { ConfigService } from '@nestjs/config';
 import {
   RegisterDto,
   LoginDto,
@@ -45,6 +51,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('register')
@@ -145,5 +152,74 @@ export class AuthController {
       body.token,
       body.newPassword,
     );
+  }
+
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  @ApiGoogleLogin()
+  async googleAuth() {
+    // Guard redirects to Google OAuth
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @ApiGoogleCallback()
+  async googleAuthRedirect(@Request() req, @Res() res: Response): Promise<void> {
+    try {
+      const authResult = await this.authService.login(req.user);
+      
+      const frontendUrl = this.configService.get<string>('CLIENT_URL') || 'http://localhost:3001';
+      
+      // Encode tokens để truyền qua URL (dùng hash fragment để an toàn hơn)
+      const tokens = encodeURIComponent(JSON.stringify({
+        accessToken: authResult.accessToken,
+        refreshToken: authResult.refreshToken,
+        user: authResult.user,
+      }));
+      
+      // Trả về HTML page để redirect với hash fragment (tokens không xuất hiện trong server logs)
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Redirecting...</title>
+          </head>
+          <body>
+            <script>
+              // Redirect về FE với tokens trong hash fragment
+              window.location.href = '${frontendUrl}/auth/callback#tokens=${tokens}';
+            </script>
+            <p>Redirecting...</p>
+            <p>If you are not redirected, <a href="${frontendUrl}/auth/callback#tokens=${tokens}">click here</a>.</p>
+          </body>
+        </html>
+      `;
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (error) {
+      const frontendUrl = this.configService.get<string>('CLIENT_URL') || 'http://localhost:3001';
+      const errorMsg = error instanceof Error ? error.message : 'Authentication failed';
+      
+      // Redirect về FE với error trong hash fragment
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Error</title>
+          </head>
+          <body>
+            <script>
+              window.location.href = '${frontendUrl}/auth/callback#error=${encodeURIComponent(errorMsg)}';
+            </script>
+            <p>Redirecting...</p>
+            <p>If you are not redirected, <a href="${frontendUrl}/auth/callback#error=${encodeURIComponent(errorMsg)}">click here</a>.</p>
+          </body>
+        </html>
+      `;
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    }
   }
 }

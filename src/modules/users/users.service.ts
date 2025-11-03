@@ -25,6 +25,28 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async createOAuthUser(data: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    roles?: string[];
+  }): Promise<User> {
+    const existingUser = await this.findByEmail(data.email);
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    const user = this.usersRepository.create({
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      roles: data.roles || ['user'],
+      // OAuth users don't need password - omit password field (will be null in DB)
+    });
+    const savedUser = await this.usersRepository.save(user);
+    return savedUser;
+  }
+
   async findAll(): Promise<User[]> {
     return this.usersRepository.find();
   }

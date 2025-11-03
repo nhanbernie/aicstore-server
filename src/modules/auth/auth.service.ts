@@ -83,7 +83,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
-    if (user && (await user.validatePassword(password))) {
+    if (user && user.password && (await user.validatePassword(password))) {
       return user;
     }
     return null;
@@ -191,5 +191,37 @@ export class AuthService {
     });
 
     return this.getUserProfile(userId);
+  }
+
+  async validateGoogleUser(googleProfile: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    picture?: string;
+  }): Promise<User> {
+    // Check if user exists
+    let user = await this.usersService.findByEmail(googleProfile.email);
+
+    if (!user) {
+      // Create new user if doesn't exist (OAuth users don't need password)
+      user = await this.usersService.createOAuthUser({
+        email: googleProfile.email,
+        firstName: googleProfile.firstName,
+        lastName: googleProfile.lastName,
+        roles: [ROLE.USER],
+      });
+    } else {
+      // Update user info if exists but doesn't have name
+      if (!user.firstName && googleProfile.firstName) {
+        await this.usersService.update(user.id, {
+          firstName: googleProfile.firstName,
+          lastName: googleProfile.lastName,
+        });
+        // Refresh user data
+        user = await this.usersService.findById(user.id);
+      }
+    }
+
+    return user;
   }
 }

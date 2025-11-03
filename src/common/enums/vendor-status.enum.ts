@@ -2,5 +2,5 @@ export enum VendorStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
-  SUSPENDED = 'suspended',
+  SUSPENDED = 'suspended',  
 }
