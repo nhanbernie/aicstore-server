@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 import { ResponseMessage, ResponseMessages } from '@decorators/response-message.decorator';
 
 @ApiTags('Cart')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
 @Controller('cart')
 export class CartController {
