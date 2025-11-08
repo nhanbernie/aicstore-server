@@ -15,7 +15,8 @@ import {
   QuoteRequestsModule,
   UsersModule,
   VendorsModule,
-  AiModule
+  AiModule,
+  AddressesModule,
 } from './modules/index';
 
 @Module({
@@ -35,7 +36,8 @@ import {
     CategoriesModule,
     AdminModule,
     QuoteRequestsModule,
-    AiModule
+    AiModule,
+    AddressesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,12 +4,15 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductVariant } from '@products/entities/product-variant.entity';
 import { Product } from '@products/entities/product.entity';
 import { Repository } from 'typeorm';
 import { CartService } from '../cart/cart.service';
+import { AddressesService } from '../addresses/addresses.service';
 import {
   CheckoutFromCartDto,
   CreateOrderDto,
@@ -32,9 +35,47 @@ export class OrdersService {
     @InjectRepository(ProductVariant)
     private readonly productVariantRepository: Repository<ProductVariant>,
     private readonly cartService: CartService,
+    @Inject(forwardRef(() => AddressesService))
+    private readonly addressesService: AddressesService,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
+    // Validate shipping info: must have either addressId OR manual shipping fields
+    if (!createOrderDto.addressId && (!createOrderDto.shippingName || !createOrderDto.shippingPhone || !createOrderDto.shippingAddress)) {
+      throw new BadRequestException('Either addressId or manual shipping information (name, phone, address) must be provided');
+    }
+
+    // Fetch address if addressId provided
+    let shippingInfo: {
+      shippingName: string;
+      shippingPhone: string;
+      shippingAddress: string;
+      shippingCity?: string;
+      shippingDistrict?: string;
+      shippingWard?: string;
+    };
+
+    if (createOrderDto.addressId) {
+      const address = await this.addressesService.findOne(createOrderDto.addressId, userId);
+      shippingInfo = {
+        shippingName: address.recipientName,
+        shippingPhone: address.recipientPhone,
+        shippingAddress: address.addressLine,
+        shippingCity: address.city,
+        shippingDistrict: address.district,
+        shippingWard: address.ward,
+      };
+    } else {
+      shippingInfo = {
+        shippingName: createOrderDto.shippingName!,
+        shippingPhone: createOrderDto.shippingPhone!,
+        shippingAddress: createOrderDto.shippingAddress!,
+        shippingCity: createOrderDto.shippingCity,
+        shippingDistrict: createOrderDto.shippingDistrict,
+        shippingWard: createOrderDto.shippingWard,
+      };
+    }
+
     // Generate order number
     const orderNumber = await this.generateOrderNumber();
 
@@ -129,12 +170,12 @@ export class OrdersService {
       discountAmount,
       totalAmount,
       currency: 'VND',
-      shippingName: createOrderDto.shippingName,
-      shippingPhone: createOrderDto.shippingPhone,
-      shippingAddress: createOrderDto.shippingAddress,
-      shippingCity: createOrderDto.shippingCity,
-      shippingDistrict: createOrderDto.shippingDistrict,
-      shippingWard: createOrderDto.shippingWard,
+      shippingName: shippingInfo.shippingName,
+      shippingPhone: shippingInfo.shippingPhone,
+      shippingAddress: shippingInfo.shippingAddress,
+      shippingCity: shippingInfo.shippingCity,
+      shippingDistrict: shippingInfo.shippingDistrict,
+      shippingWard: shippingInfo.shippingWard,
       shippingPostalCode: createOrderDto.shippingPostalCode,
       customerNotes: createOrderDto.customerNotes,
       estimatedDelivery,

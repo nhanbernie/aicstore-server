@@ -21,6 +21,14 @@ export class CreateOrderItemDto {
 }
 
 export class CreateOrderDto {
+  @ApiPropertyOptional({
+    description: 'Saved address ID (if using saved address, other shipping fields are optional)',
+    example: 'uuid',
+  })
+  @IsUUID()
+  @IsOptional()
+  addressId?: string;
+
   @ApiProperty({ description: 'Order items', type: [CreateOrderItemDto] })
   @IsArray()
   @ValidateNested({ each: true })
@@ -31,20 +39,20 @@ export class CreateOrderDto {
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
 
-  @ApiProperty({ description: 'Shipping name', example: 'Nguyễn Văn A' })
+  @ApiPropertyOptional({ description: 'Shipping name (required if not using addressId)', example: 'Nguyễn Văn A' })
   @IsString()
-  @IsNotEmpty()
-  shippingName: string;
+  @IsOptional()
+  shippingName?: string;
 
-  @ApiProperty({ description: 'Shipping phone', example: '0901234567' })
+  @ApiPropertyOptional({ description: 'Shipping phone (required if not using addressId)', example: '0901234567' })
   @IsString()
-  @IsNotEmpty()
-  shippingPhone: string;
+  @IsOptional()
+  shippingPhone?: string;
 
-  @ApiProperty({ description: 'Shipping address', example: '123 Đường ABC' })
+  @ApiPropertyOptional({ description: 'Shipping address (required if not using addressId)', example: '123 Đường ABC' })
   @IsString()
-  @IsNotEmpty()
-  shippingAddress: string;
+  @IsOptional()
+  shippingAddress?: string;
 
   @ApiPropertyOptional({ description: 'Shipping city', example: 'TP.HCM' })
   @IsString()
@@ -158,24 +166,32 @@ export class OrderFilterDto {
 }
 
 export class CheckoutFromCartDto {
+  @ApiPropertyOptional({
+    description: 'Saved address ID (if using saved address, other shipping fields are optional)',
+    example: 'uuid',
+  })
+  @IsUUID()
+  @IsOptional()
+  addressId?: string;
+
   @ApiProperty({ description: 'Payment method', enum: PaymentMethod })
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
 
-  @ApiProperty({ description: 'Shipping name', example: 'Nguyễn Văn A' })
+  @ApiPropertyOptional({ description: 'Shipping name (required if not using addressId)', example: 'Nguyễn Văn A' })
   @IsString()
-  @IsNotEmpty()
-  shippingName: string;
+  @IsOptional()
+  shippingName?: string;
 
-  @ApiProperty({ description: 'Shipping phone', example: '0901234567' })
+  @ApiPropertyOptional({ description: 'Shipping phone (required if not using addressId)', example: '0901234567' })
   @IsString()
-  @IsNotEmpty()
-  shippingPhone: string;
+  @IsOptional()
+  shippingPhone?: string;
 
-  @ApiProperty({ description: 'Shipping address', example: '123 Đường ABC' })
+  @ApiPropertyOptional({ description: 'Shipping address (required if not using addressId)', example: '123 Đường ABC' })
   @IsString()
-  @IsNotEmpty()
-  shippingAddress: string;
+  @IsOptional()
+  shippingAddress?: string;
 
   @ApiPropertyOptional({ description: 'Shipping city', example: 'TP.HCM' })
   @IsString()
