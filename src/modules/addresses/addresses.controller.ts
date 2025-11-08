@@ -59,16 +59,6 @@ export class AddressesController {
     return await this.addressesService.findAll(req.user.userId);
   }
 
-  @Get('default')
-  @ApiOperation({
-    summary: 'Get default address',
-    description: 'Get the default shipping address',
-  })
-  @ResponseMessage('Địa chỉ mặc định đã được lấy thành công')
-  async findDefault(@Request() req): Promise<AddressResponseDto | null> {
-    return await this.addressesService.findDefault(req.user.userId);
-  }
-
   @Get(':id')
   @ApiOperation({
     summary: 'Get address by ID',
@@ -96,20 +86,6 @@ export class AddressesController {
     @Body() updateAddressDto: UpdateAddressDto,
   ): Promise<AddressResponseDto> {
     return await this.addressesService.update(id, req.user.userId, updateAddressDto);
-  }
-
-  @Patch(':id/set-default')
-  @ApiOperation({
-    summary: 'Set address as default',
-    description: 'Set an address as the default shipping address',
-  })
-  @ApiParam({ name: 'id', description: 'Address ID', type: 'string' })
-  @ResponseMessage('Địa chỉ đã được đặt làm mặc định')
-  async setDefault(
-    @Request() req,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<AddressResponseDto> {
-    return await this.addressesService.setDefault(id, req.user.userId);
   }
 
   @Delete(':id')

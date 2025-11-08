@@ -275,6 +275,7 @@ export class OrdersService {
     const createOrderDto: CreateOrderDto = {
       items: orderItems,
       paymentMethod: checkoutDto.paymentMethod,
+      addressId: checkoutDto.addressId,
       shippingName: checkoutDto.shippingName,
       shippingPhone: checkoutDto.shippingPhone,
       shippingAddress: checkoutDto.shippingAddress,
