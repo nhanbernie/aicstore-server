@@ -6,6 +6,7 @@ import { Payment } from './entitiy/payment.entity';
 import { HttpModule } from '@nestjs/axios';
 import { VendorsModule } from '../vendors/vendors.module';
 import { OrdersModule } from '../orders/orders.module';
+import { VendorWalletModule } from '../vendor-wallet/vendor-wallet.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { OrdersModule } from '../orders/orders.module';
     HttpModule,
     forwardRef(() => VendorsModule),
     forwardRef(() => OrdersModule),
+    forwardRef(() => VendorWalletModule),
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

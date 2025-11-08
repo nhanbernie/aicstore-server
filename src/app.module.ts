@@ -15,6 +15,7 @@ import {
   QuoteRequestsModule,
   UsersModule,
   VendorsModule,
+  VendorWalletModule,
 } from './modules/index';
 
 @Module({
@@ -26,6 +27,7 @@ import {
     DatabaseModule,
     UsersModule,
     VendorsModule,
+    VendorWalletModule,
     ProductsModule,
     OrdersModule,
     PaymentsModule,

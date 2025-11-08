@@ -21,7 +21,7 @@ import {
 } from './dto/order.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { Order, OrderStatus, PaymentStatus, PaymentMethod } from './entities/order.entity';
-import { VendorWalletService } from '../vendors/services/vendor-wallet.service';
+import { VendorWalletService } from '../vendor-wallet/vendor-wallet.service';
 
 @Injectable()
 export class OrdersService {

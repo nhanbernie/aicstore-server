@@ -27,7 +27,7 @@ import { ApiBearerAuth, ApiBody, ApiTags, ApiOperation, ApiResponse } from '@nes
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { ROLE } from '@/common/enums/auth.enums';
-import { VendorWalletService } from '../vendors/services/vendor-wallet.service';
+import { VendorWalletService } from '../vendor-wallet/vendor-wallet.service';
 import { OrdersService } from '../orders/orders.service';
 import { PaymentStatus } from './enum/payment-status.enum';
 import { PaymentStatus as OrderPaymentStatus } from '../orders/entities/order.entity';

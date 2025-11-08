@@ -6,6 +6,7 @@ import { Order, OrderItem } from './entities';
 import { Product, ProductVariant } from '@products/entities';
 import { CartModule } from '../cart/cart.module';
 import { VendorsModule } from '../vendors/vendors.module';
+import { VendorWalletModule } from '../vendor-wallet/vendor-wallet.module';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { VendorsModule } from '../vendors/vendors.module';
       ProductVariant,
     ]),
     CartModule,
-    forwardRef(() => VendorsModule), // ForwardRef để tránh circular dependency
+    forwardRef(() => VendorsModule), 
+    forwardRef(() => VendorWalletModule), 
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
