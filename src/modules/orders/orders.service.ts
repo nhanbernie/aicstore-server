@@ -4,6 +4,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductVariant } from '@products/entities/product-variant.entity';
@@ -18,7 +20,8 @@ import {
   UpdatePaymentStatusDto,
 } from './dto/order.dto';
 import { OrderItem } from './entities/order-item.entity';
-import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
+import { Order, OrderStatus, PaymentStatus, PaymentMethod } from './entities/order.entity';
+import { VendorWalletService } from '../vendors/services/vendor-wallet.service';
 
 @Injectable()
 export class OrdersService {
@@ -32,6 +35,8 @@ export class OrdersService {
     @InjectRepository(ProductVariant)
     private readonly productVariantRepository: Repository<ProductVariant>,
     private readonly cartService: CartService,
+    @Inject(forwardRef(() => VendorWalletService))
+    private readonly vendorWalletService: VendorWalletService,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
@@ -112,6 +117,9 @@ export class OrdersService {
     const discountAmount = 0; // Can add discount logic
     const totalAmount = subtotal + shippingFee + taxAmount - discountAmount;
 
+    // Calculate projected fees (5% of totalAmount)
+    const projectedFees = Number((totalAmount * 0.05).toFixed(2));
+
     // Calculate estimated delivery (3-5 days from now)
     const estimatedDelivery = new Date();
     estimatedDelivery.setDate(estimatedDelivery.getDate() + 3);
@@ -128,6 +136,7 @@ export class OrdersService {
       taxAmount,
       discountAmount,
       totalAmount,
+      projectedFees,
       currency: 'VND',
       shippingName: createOrderDto.shippingName,
       shippingPhone: createOrderDto.shippingPhone,
@@ -432,7 +441,21 @@ export class OrdersService {
 
   async updatePaymentStatus(id: string, updatePaymentDto: UpdatePaymentStatusDto): Promise<Order> {
     const order = await this.findOne(id);
+    const oldPaymentStatus = order.paymentStatus;
     order.paymentStatus = updatePaymentDto.paymentStatus;
+    
+    // Nếu payment status chuyển sang PAID và order status đang là PENDING
+    // thì tự động chuyển order status sang ADMIN_CONFIRMED
+    if (
+      updatePaymentDto.paymentStatus === PaymentStatus.PAID &&
+      oldPaymentStatus !== PaymentStatus.PAID &&
+      order.status === OrderStatus.PENDING
+    ) {
+      order.status = OrderStatus.ADMIN_CONFIRMED;
+      order.adminConfirmedAt = new Date();
+      console.log(`[OrdersService] Auto-confirmed order ${id} after payment success`);
+    }
+    
     return this.orderRepository.save(order);
   }
 
@@ -602,6 +625,162 @@ export class OrdersService {
         name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'N/A',
       })),
     };
+  }
+
+  /**
+   * Admin xác nhận đơn hàng - kiểm tra balance vendor
+   */
+  async adminConfirmOrder(orderId: string): Promise<Order> {
+    const order = await this.findOne(orderId);
+    
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('Chỉ có thể xác nhận đơn hàng ở trạng thái PENDING');
+    }
+
+    // Lấy vendor từ order items (đơn hàng có thể có nhiều vendor, nhưng tạm thời lấy vendor đầu tiên)
+    const orderWithItems = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product', 'items.product.vendor'],
+    });
+
+    if (!orderWithItems?.items?.length) {
+      throw new NotFoundException('Order items not found');
+    }
+
+    // Lấy vendor đầu tiên (trong tương lai có thể cần xử lý multi-vendor)
+    const firstItem = orderWithItems.items[0];
+    const vendorId = firstItem.product?.vendorId;
+
+    if (!vendorId) {
+      throw new BadRequestException('Không tìm thấy vendor cho đơn hàng này');
+    }
+
+    // Kiểm tra balance vendor
+    const balanceCheck = await this.vendorWalletService.checkVendorBalance(
+      vendorId,
+      order.projectedFees || 0,
+    );
+
+    if (!balanceCheck.hasEnoughBalance) {
+      throw new BadRequestException(
+        `Vendor không đủ số dư để xử lý đơn hàng. Số dư khả dụng: ${balanceCheck.availableBalance.toLocaleString('vi-VN')} VND, Phí dự kiến: ${balanceCheck.projectedFees.toLocaleString('vi-VN')} VND`,
+      );
+    }
+
+    // Cập nhật trạng thái
+    order.status = OrderStatus.ADMIN_CONFIRMED;
+    order.adminConfirmedAt = new Date();
+
+    return this.orderRepository.save(order);
+  }
+
+
+  async updateStatusForVendor(
+    orderId: string,
+    vendorId: string,
+    updateStatusDto: UpdateOrderStatusDto,
+  ): Promise<Order> {
+    const order = await this.findOneForVendor(orderId, vendorId);
+
+    // Chỉ cho phép update từ admin_confirmed sang shipping hoặc delivered
+    if (order.status !== OrderStatus.ADMIN_CONFIRMED && 
+        order.status !== OrderStatus.SHIPPING) {
+      throw new BadRequestException(
+        `Không thể cập nhật trạng thái từ ${order.status}. Chỉ có thể cập nhật từ ADMIN_CONFIRMED hoặc SHIPPING`,
+      );
+    }
+
+    // Validate status transition
+    if (updateStatusDto.status === OrderStatus.SHIPPING) {
+      if (order.status !== OrderStatus.ADMIN_CONFIRMED) {
+        throw new BadRequestException('Chỉ có thể bắt đầu giao hàng từ trạng thái ADMIN_CONFIRMED');
+      }
+      order.shippingStartedAt = new Date();
+    } else if (updateStatusDto.status === OrderStatus.DELIVERED) {
+      if (order.status !== OrderStatus.SHIPPING) {
+        throw new BadRequestException('Chỉ có thể đánh dấu đã giao hàng từ trạng thái SHIPPING');
+      }
+      order.deliveredByVendorAt = new Date();
+    } else {
+      throw new BadRequestException(
+        `Vendor chỉ có thể cập nhật trạng thái sang SHIPPING hoặc DELIVERED`,
+      );
+    }
+
+    order.status = updateStatusDto.status;
+    order.paymentStatus = PaymentStatus.PAID;
+    
+    if (updateStatusDto.trackingNumber) {
+      order.trackingNumber = updateStatusDto.trackingNumber;
+    }
+
+    if (updateStatusDto.notes) {
+      order.notes = updateStatusDto.notes;
+    }
+
+    return this.orderRepository.save(order);
+  }
+
+  /**
+   * Admin hoàn thành đơn hàng và tính toán fee
+   */
+  async completeOrder(orderId: string): Promise<Order> {
+    const order = await this.findOne(orderId);
+
+    if (order.status !== OrderStatus.DELIVERED) {
+      throw new BadRequestException(
+        `Chỉ có thể hoàn thành đơn hàng từ trạng thái DELIVERED. Trạng thái hiện tại: ${order.status}`,
+      );
+    }
+
+    // Tính phí sàn (5%)
+    const platformFee = order.projectedFees || Number((order.totalAmount * 0.05).toFixed(2));
+    const vendorPayoutAmount = Number(order.totalAmount) - platformFee;
+
+    // Lấy vendor từ order items
+    const orderWithItems = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['items', 'items.product'],
+    });
+
+    if (!orderWithItems?.items?.length) {
+      throw new NotFoundException('Order items not found');
+    }
+
+    const firstItem = orderWithItems.items[0];
+    const vendorId = firstItem.product?.vendorId;
+
+    if (!vendorId) {
+      throw new BadRequestException('Không tìm thấy vendor cho đơn hàng này');
+    }
+
+    // Cập nhật order
+    order.status = OrderStatus.COMPLETED;
+    order.completedAt = new Date();
+    order.platformFee = platformFee;
+    order.vendorPayoutAmount = vendorPayoutAmount;
+
+    // Xử lý fee và payout
+    if (order.paymentMethod === PaymentMethod.BANK_TRANSFER) {
+      // Đơn hàng online: cộng tiền cho vendor (đã trừ fee)
+      await this.vendorWalletService.addOrderPayout(
+        vendorId,
+        orderId,
+        order.totalAmount,
+        platformFee,
+        vendorPayoutAmount,
+      );
+    } else if (order.paymentMethod === PaymentMethod.COD) {
+      // Đơn hàng COD: trừ phí từ ví vendor
+      await this.vendorWalletService.deductOrderFee(
+        vendorId,
+        orderId,
+        order.totalAmount,
+        platformFee,
+      );
+    }
+
+    return this.orderRepository.save(order);
   }
 
   private async generateOrderNumber(): Promise<string> {
