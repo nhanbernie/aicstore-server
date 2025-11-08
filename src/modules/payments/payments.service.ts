@@ -1,57 +1,40 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Payment } from './entitiy/payment.entity';
 import { Repository } from 'typeorm';
-import * as crypto from 'crypto';
-import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { PayosRequestPaymentPayload } from './type';
+import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import * as crypto from 'crypto';
+import { Payment } from './entitiy/payment.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentStatus } from './enum/payment-status.enum';
+import type { PayosRequestPaymentPayload } from './type';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     @InjectRepository(Payment)
     private readonly paymentsRepository: Repository<Payment>,
-    private readonly httpService: HttpService,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly httpService: HttpService,
+  ) { }
 
-  sortObjDataByKey(object: Record<string, unknown>) {
-    const orderedObject = Object.keys(object)
+  private sortObjDataByKey(obj: any): any {
+    return Object.keys(obj)
       .sort()
-      .reduce((obj, key) => {
-        obj[key] = object[key];
-        return obj;
+      .reduce((result: any, key: string) => {
+        result[key] = obj[key];
+        return result;
       }, {});
-    return orderedObject;
   }
 
-  convertObjToQueryStr(object: Record<string, unknown>) {
-    return Object.keys(object)
-      .filter((key) => object[key] !== undefined)
-      .map((key) => {
-        let value = object[key];
-        // Sort nested object
-        if (value && Array.isArray(value)) {
-          value = JSON.stringify(
-            value.map((val) => this.sortObjDataByKey(val)),
-          );
-        }
-        // Set empty string if null
-        if ([null, undefined, 'undefined', 'null'].includes(value as string)) {
-          value = '';
-        }
-
-        return `${key}=${value}`;
-      })
+  private convertObjToQueryStr(obj: any): string {
+    return Object.keys(obj)
+      .map((key) => `${key}=${obj[key]}`)
       .join('&');
   }
 
-  // Hàm tạo signature
-  generateSignature(
+  private generateSignature(
     payload: {
       amount: number;
       cancelUrl: string;
@@ -106,12 +89,15 @@ export class PaymentsService {
     );
 
     const payosData = (response as any).data;
+    const paymentType = body.orderId.startsWith('deposit_') ? 'wallet_deposit' : 'order_payment';
 
     const payment = this.paymentsRepository.create({
       orderId: body.orderId,
       amount: body.amount,
+      orderCode: orderCode.toString(), // Convert sang string để lưu vào bigint column
       status: PaymentStatus.PENDING,
       paymentMethod: 'PAYOS',
+      paymentType,
       signature,
     });
 
@@ -121,5 +107,94 @@ export class PaymentsService {
       payment,
       payosData,
     };
+  }
+
+  async findByOrderCode(orderCode: number | string): Promise<Payment | null> {
+    const orderCodeStr = orderCode.toString();
+    return this.paymentsRepository.findOne({
+      where: { orderCode: orderCodeStr },
+    });
+  }
+
+  async updatePaymentStatus(
+    paymentId: string,
+    status: PaymentStatus,
+    transactionId?: string,
+  ): Promise<Payment> {
+    const payment = await this.paymentsRepository.findOne({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new Error('Payment not found');
+    }
+
+    payment.status = status;
+    if (transactionId) {
+      payment.transactionId = transactionId;
+    }
+    if (status === PaymentStatus.SUCCESS) {
+      payment.paidAt = new Date();
+    }
+
+    return this.paymentsRepository.save(payment);
+  }
+
+  async checkPaymentStatusFromPayOS(orderCode: number | string): Promise<any> {
+    const url = `https://api-merchant.payos.vn/v2/payment-requests/${orderCode}`;
+    const config = {
+      headers: {
+        'x-client-id': this.configService.getOrThrow<string>('PAYOS_CLIENT_ID'),
+        'x-api-key': this.configService.getOrThrow<string>('PAYOS_API_KEY'),
+      },
+    };
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(url, config),
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('[PayOS] Error checking payment status:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  async syncPaymentStatus(orderCode: number | string): Promise<Payment> {
+    const payment = await this.findByOrderCode(orderCode);
+
+    if (!payment) {
+      throw new Error('Payment not found');
+    }
+
+    if (payment.status === PaymentStatus.SUCCESS) {
+      return payment;
+    }
+
+    try {
+      const payosData = await this.checkPaymentStatusFromPayOS(orderCode);
+
+      let newStatus: PaymentStatus;
+      if (payosData.data?.status === 'PAID') {
+        newStatus = PaymentStatus.SUCCESS;
+      } else if (payosData.data?.status === 'CANCELLED' || payosData.data?.status === 'EXPIRED') {
+        newStatus = PaymentStatus.FAILED;
+      } else {
+        newStatus = PaymentStatus.PENDING;
+      }
+
+      if (newStatus !== payment.status) {
+        payment.status = newStatus;
+        if (newStatus === PaymentStatus.SUCCESS) {
+          payment.paidAt = new Date();
+        }
+        await this.paymentsRepository.save(payment);
+      }
+
+      return payment;
+    } catch (error) {
+      console.error('[PayOS] Error syncing payment status:', error);
+      throw error;
+    }
   }
 }
