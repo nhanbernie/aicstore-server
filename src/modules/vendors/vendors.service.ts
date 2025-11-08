@@ -3,6 +3,8 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,6 +17,7 @@ import {
 } from './dto/vendor.dto';
 import { UsersService } from '@users/users.service';
 import { ROLE } from '@enums/auth.enums';
+import { VendorWalletService } from '../vendor-wallet/vendor-wallet.service';
 
 @Injectable()
 export class VendorsService {
@@ -22,6 +25,8 @@ export class VendorsService {
     @InjectRepository(Vendor)
     private readonly vendorsRepository: Repository<Vendor>,
     private readonly usersService: UsersService,
+    @Inject(forwardRef(() => VendorWalletService))
+    private readonly vendorWalletService: VendorWalletService,
   ) { }
 
   async create(
@@ -114,7 +119,11 @@ export class VendorsService {
     await this.usersService.update(vendor.userId, { roles: [ROLE.VENDOR] });
     
     vendor.status = VendorStatus.APPROVED;
-    return this.vendorsRepository.save(vendor);
+    const savedVendor = await this.vendorsRepository.save(vendor);
+    
+    await this.vendorWalletService.createWallet(vendor.id);
+    
+    return savedVendor;
   }
 
   async rejectVendor(id: string): Promise<Vendor> {

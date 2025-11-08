@@ -31,7 +31,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { plainToClass } from 'class-transformer';
-import { VendorOrderFilterDto } from '../orders/dto/order.dto';
+import { VendorOrderFilterDto, UpdateOrderStatusDto } from '../orders/dto/order.dto';
 import { OrdersService } from '../orders/orders.service';
 import {
   AdminUpdateVendorDto,
@@ -207,6 +207,49 @@ export class VendorsController {
     return {
       success: true,
       message: 'Lấy chi tiết đơn hàng thành công',
+      data: order,
+    };
+  }
+
+  @Patch('orders/:orderId/status')
+  @Roles(ROLE.VENDOR)
+  @ResponseMessage('Vendor order status updated')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update vendor order status',
+    description: 'Vendor can update order status to SHIPPING or DELIVERED',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Order status updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid status transition',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Order does not belong to vendor',
+  })
+  async updateOrderStatus(
+    @Request() req,
+    @Param('orderId', ParseUUIDPipe) orderId: string,
+    @Body() updateStatusDto: UpdateOrderStatusDto,
+  ) {
+    const vendor = await this.vendorsService.findByUserId(req.user.userId);
+    if (!vendor) {
+      throw new Error('Vendor profile not found');
+    }
+
+    const order = await this.ordersService.updateStatusForVendor(
+      orderId,
+      vendor.id,
+      updateStatusDto,
+    );
+
+    return {
+      success: true,
+      message: 'Cập nhật trạng thái đơn hàng thành công',
       data: order,
     };
   }
