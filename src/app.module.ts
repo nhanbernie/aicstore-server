@@ -17,6 +17,7 @@ import {
   VendorsModule,
   AiModule,
   AddressesModule,
+  ReviewsModule,
 } from './modules/index';
 
 @Module({
@@ -38,6 +39,7 @@ import {
     QuoteRequestsModule,
     AiModule,
     AddressesModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -3,6 +3,7 @@ export * from './users';
 export * from './ai';
 export * from './cart';
 export * from './addresses';
+export * from './reviews';
 
 
 // Import for root modules
@@ -18,3 +19,4 @@ export * from './admin/admin.module';
 export * from './payments/payments.module';
 export * from './quote-requests/quote-requests.module';
 export * from './addresses/addresses.module';
+export * from './reviews/reviews.module';

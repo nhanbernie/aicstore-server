@@ -127,6 +127,24 @@ export class Product {
   })
   isActive: boolean;
 
+  @Column({
+    type: 'decimal',
+    precision: 2,
+    scale: 1,
+    name: 'average_rating',
+    default: 0,
+    comment: 'Average rating from reviews (0-5)',
+  })
+  averageRating: number;
+
+  @Column({
+    type: 'int',
+    name: 'total_reviews',
+    default: 0,
+    comment: 'Total number of reviews',
+  })
+  totalReviews: number;
+
   // Relations
   @OneToMany(() => ProductImage, (image) => image.product, { cascade: true })
   images: ProductImage[];
