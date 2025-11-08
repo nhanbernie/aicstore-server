@@ -11,11 +11,10 @@ export class AiIntentService {
 
   async classifyIntent(userMessage: string): Promise<AiIntentResult> {
     try {
-      const prompt = `${AI_SYSTEM_PROMPT}\n\nUser message: "${userMessage}"`;
-
-      const response = await this.geminiService.generate(prompt, {
-        temperature: 0.3, // Lower temperature for more consistent classification
+      const response = await this.geminiService.generate(userMessage, {
+        temperature: 0.3,
         maxTokens: 500,
+        systemInstruction: AI_SYSTEM_PROMPT,
       });
 
       // Try to parse JSON from response

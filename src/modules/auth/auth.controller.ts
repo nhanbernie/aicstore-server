@@ -116,14 +116,6 @@ export class AuthController {
     summary: 'Update user profile',
     description: 'Allows logged-in users to update their own profile (firstName, lastName, phoneNumber)' 
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Profile updated successfully' 
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Invalid or missing token' 
-  })
   @ResponseMessage('Cập nhật profile thành công')
   async updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
     const updatedUser = await this.authService.updateUserProfile(req.user.userId, updateProfileDto);

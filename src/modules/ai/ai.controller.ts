@@ -50,14 +50,6 @@ export class AiController {
       },
     },
   })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error',
-  })
   async chat(@Body() chatDto: GeminiChatDto) {
     const response = await this.geminiService.chat(
       chatDto.message,
@@ -74,32 +66,20 @@ export class AiController {
     };
   }
 
-  @Post('generate')
-  @HttpCode(HttpStatus.OK)
+  // @Post('generate')
+  // @HttpCode(HttpStatus.OK)
+  // @ApiOperation({ summary: 'Generate content with Gemini AI' })
+  // async generate(@Body() generateDto: GeminiGenerateDto) {
+  //   const result = await this.geminiService.generate(generateDto.prompt, {
+  //     temperature: generateDto.temperature,
+  //     maxTokens: generateDto.maxTokens,
+  //   });
 
-  @ApiOperation({ summary: 'Generate content with Gemini AI' })
-  @ApiResponse({
-    status: 200,
-    description: 'Content generated successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string' },
-        result: { type: 'string' },
-      },
-    },
-  })
-  async generate(@Body() generateDto: GeminiGenerateDto) {
-    const result = await this.geminiService.generate(generateDto.prompt, {
-      temperature: generateDto.temperature,
-      maxTokens: generateDto.maxTokens,
-    });
-
-    return {
-      prompt: generateDto.prompt,
-      result,
-    };
-  }
+  //   return {
+  //     prompt: generateDto.prompt,
+  //     result,
+  //   };
+  // }
 
   @Post('assistant')
   @HttpCode(HttpStatus.OK)
@@ -113,14 +93,6 @@ export class AiController {
     status: 200,
     description: 'AI response generated successfully',
     type: AiAssistantResponseDto,
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error',
   })
   async assistant(@Request() req, @Body() dto: AiAssistantRequestDto): Promise<AiAssistantResponseDto> {
     return await this.aiOrchestratorService.handleUserMessage(

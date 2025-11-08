@@ -7,6 +7,7 @@ import { AiOrchestratorService } from './services/ai-orchestrator.service';
 import { CartModule } from '@modules/cart/cart.module';
 import { OrdersModule } from '@modules/orders/orders.module';
 import { ProductsModule } from '@modules/products/products.module';
+import { CategoriesModule } from '@modules/categories/categories.module';
 import { AuthModule } from '@modules/auth/auth.module';
 
 @Module({
@@ -14,7 +15,8 @@ import { AuthModule } from '@modules/auth/auth.module';
     ConfigModule, 
     CartModule, 
     OrdersModule, 
-    ProductsModule, 
+    ProductsModule,
+    CategoriesModule,
     forwardRef(() => AuthModule)
   ],
   controllers: [AiController],

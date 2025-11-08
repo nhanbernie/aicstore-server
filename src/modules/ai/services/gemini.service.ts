@@ -5,7 +5,7 @@ import {
   GeminiMessage,
   GeminiRequestBody,
   GeminiResponse,
-  GeminiConfig,
+  // GeminiConfig,
 } from '../interfaces/gemini.interface';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class GeminiService {
 
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-pro';
+    this.model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
     this.baseUrl =
       this.configService.get<string>('GEMINI_BASE_URL') ||
       'https://generativelanguage.googleapis.com/v1beta';
@@ -36,9 +36,6 @@ export class GeminiService {
     });
   }
 
-  /**
-   * Send a chat message to Gemini
-   */
   async chat(
     message: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
@@ -92,6 +89,7 @@ export class GeminiService {
     options?: {
       temperature?: number;
       maxTokens?: number;
+      systemInstruction?: string;
     },
   ): Promise<string> {
     try {
@@ -112,6 +110,13 @@ export class GeminiService {
         },
       };
 
+      // Add system instruction if provided
+      if (options?.systemInstruction) {
+        requestBody.systemInstruction = {
+          parts: [{ text: options.systemInstruction }],
+        };
+      }
+
       const response = await this.axiosInstance.post<GeminiResponse>(
         `/models/${this.model}:generateContent?key=${this.apiKey}`,
         requestBody,
@@ -127,9 +132,6 @@ export class GeminiService {
     }
   }
 
-  /**
-   * Extract text from Gemini response
-   */
   private extractTextFromResponse(response: GeminiResponse): string {
     if (!response.candidates || response.candidates.length === 0) {
       throw new HttpException(
@@ -150,9 +152,6 @@ export class GeminiService {
     return candidate.content.parts.map(part => part.text).join('');
   }
 
-  /**
-   * Validate API key
-   */
   private validateApiKey(): void {
     if (!this.apiKey) {
       throw new HttpException(
@@ -162,9 +161,6 @@ export class GeminiService {
     }
   }
 
-  /**
-   * Handle errors
-   */
   private handleError(error: any, context: string): never {
     this.logger.error(`${context}: ${error.message}`, error.stack);
 
@@ -192,9 +188,6 @@ export class GeminiService {
     );
   }
 
-  /**
-   * Get service health status
-   */
   async getHealthStatus(): Promise<{
     status: string;
     model: string;

@@ -7,6 +7,11 @@ export interface GeminiMessage {
 
 export interface GeminiRequestBody {
   contents: GeminiMessage[];
+  systemInstruction?: {
+    parts: Array<{
+      text: string;
+    }>;
+  };
   generationConfig?: {
     temperature?: number;
     topK?: number;

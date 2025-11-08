@@ -4,9 +4,10 @@ import { AiIntentService } from './ai-intent.service';
 import { CartService } from '@modules/cart/cart.service';
 import { OrdersService } from '@modules/orders/orders.service';
 import { ProductsService } from '@modules/products/products.service';
+import { CategoriesService } from '@modules/categories/categories.service';
 import { AiAction } from '../interfaces/ai-intent.interface';
 import { AiAssistantResponseDto } from '../dto/ai-assistant.dto';
-import { RESPONSE_GENERATION_PROMPT, MISSING_INFO_PROMPT } from '../constants/ai-prompts';
+import { RESPONSE_GENERATION_PROMPT, MISSING_INFO_PROMPT, GENERAL_CHAT_PROMPT } from '../constants/ai-prompts';
 
 @Injectable()
 export class AiOrchestratorService {
@@ -18,6 +19,7 @@ export class AiOrchestratorService {
     private readonly cartService: CartService,
     private readonly ordersService: OrdersService,
     private readonly productsService: ProductsService,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   async handleUserMessage(
@@ -68,6 +70,14 @@ export class AiOrchestratorService {
 
         case AiAction.TRACK_ORDER:
           data = await this.handleTrackOrder(userId, intent.params?.orderNumber || '');
+          break;
+
+        case AiAction.GET_CATEGORIES:
+          data = await this.handleGetCategories();
+          break;
+
+        case AiAction.FILTER_BY_CATEGORY:
+          data = await this.handleFilterByCategory(intent.params?.categoryId || '');
           break;
 
         case AiAction.GENERAL_CHAT:
@@ -138,14 +148,25 @@ export class AiOrchestratorService {
     }
   }
 
+  private async handleGetCategories() {
+    this.logger.log(`Fetching all categories`);
+    return await this.categoriesService.findAll({});
+  }
+
+  private async handleFilterByCategory(categoryId: string) {
+    this.logger.log(`Filtering products by category: ${categoryId}`);
+    return await this.productsService.findAll({ categoryId, page: 1, limit: 10 });
+  }
+
   private async handleGeneralChat(
     userMessage: string,
     conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>,
   ) {
-    this.logger.log('Handling general chat');
-    return await this.geminiService.chat(userMessage, conversationHistory, {
+    // Use systemInstruction to enforce topic boundaries
+    return await this.geminiService.generate(userMessage, {
       temperature: 0.7,
       maxTokens: 500,
+      systemInstruction: GENERAL_CHAT_PROMPT,
     });
   }
 
