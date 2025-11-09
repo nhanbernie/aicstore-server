@@ -18,6 +18,8 @@ import {
   AiModule,
   AddressesModule,
   ReviewsModule,
+  ChatModule,
+  WebsocketModule,
 } from './modules/index';
 
 @Module({
@@ -40,6 +42,8 @@ import {
     AiModule,
     AddressesModule,
     ReviewsModule,
+    ChatModule,
+    WebsocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],

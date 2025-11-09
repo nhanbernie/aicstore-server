@@ -4,6 +4,8 @@ export * from './ai';
 export * from './cart';
 export * from './addresses';
 export * from './reviews';
+export * from './chat';
+export * from './websocket';
 
 
 // Import for root modules
@@ -20,3 +22,5 @@ export * from './payments/payments.module';
 export * from './quote-requests/quote-requests.module';
 export * from './addresses/addresses.module';
 export * from './reviews/reviews.module';
+export * from './chat/chat.module';
+export * from './websocket/websocket.module';
