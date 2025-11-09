@@ -6,6 +6,7 @@ export * from './addresses';
 export * from './reviews';
 export * from './chat';
 export * from './websocket';
+export * from './vendor-wallet';
 
 
 // Import for root modules
@@ -14,6 +15,7 @@ export * from './users/users.module';
 export * from './ai/ai.module';
 export * from './cart/cart.module';
 export * from './vendors/vendors.module';
+export * from './vendor-wallet/vendor-wallet.module';
 export * from './products/products.module';
 export * from './orders/orders.module';
 export * from './categories/categories.module';

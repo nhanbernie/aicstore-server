@@ -150,9 +150,9 @@ export class OrdersController {
 
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN, ROLE.VENDOR)
+  @Roles(ROLE.ADMIN)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Update order status (Admin/Vendor only)' })
+  @ApiOperation({ summary: 'Update order status (Admin only)' })
   @ApiResponse({ status: 200, description: 'Order status updated successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async updateStatus(@Param('id') id: string, @Body() updateStatusDto: UpdateOrderStatusDto) {
@@ -160,6 +160,37 @@ export class OrdersController {
     return {
       success: true,
       message: 'Cập nhật trạng thái đơn hàng thành công',
+      data: order,
+    };
+  }
+
+  @Patch(':id/admin-confirm')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLE.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Admin xác nhận đơn hàng (kiểm tra balance vendor)' })
+  @ApiResponse({ status: 200, description: 'Order confirmed successfully' })
+  @ApiResponse({ status: 400, description: 'Vendor không đủ số dư' })
+  async adminConfirmOrder(@Param('id') id: string) {
+    const order = await this.ordersService.adminConfirmOrder(id);
+    return {
+      success: true,
+      message: 'Xác nhận đơn hàng thành công',
+      data: order,
+    };
+  }
+
+  @Patch(':id/complete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLE.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Admin hoàn thành đơn hàng (tính fee và payout)' })
+  @ApiResponse({ status: 200, description: 'Order completed successfully' })
+  async completeOrder(@Param('id') id: string) {
+    const order = await this.ordersService.completeOrder(id);
+    return {
+      success: true,
+      message: 'Hoàn thành đơn hàng thành công',
       data: order,
     };
   }

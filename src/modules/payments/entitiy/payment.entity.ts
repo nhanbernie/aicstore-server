@@ -18,6 +18,9 @@ export class Payment {
   @Column({ nullable: true })
   transactionId: string;
 
+  @Column({ type: 'bigint', nullable: true, unique: true })
+  orderCode: string;
+
   @Column('decimal', { precision: 12, scale: 2 })
   amount: number;
 
@@ -35,6 +38,9 @@ export class Payment {
     default: 'PAYOS',
   })
   paymentMethod: string;
+
+  @Column({ nullable: true })
+  paymentType: string; // 'order_payment' | 'wallet_deposit'
 
   // Lưu chữ ký để đối chiếu
   @Column({ type: 'text', nullable: true })

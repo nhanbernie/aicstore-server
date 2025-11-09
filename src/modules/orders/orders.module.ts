@@ -1,10 +1,13 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { Order, OrderItem } from './entities';
 import { Product, ProductVariant } from '@products/entities';
 import { CartModule } from '../cart/cart.module';
+import { VendorsModule } from '../vendors/vendors.module';
+import { VendorWalletModule } from '../vendor-wallet/vendor-wallet.module';
 import { AddressesModule } from '../addresses/addresses.module';
 
 @Module({
@@ -16,6 +19,8 @@ import { AddressesModule } from '../addresses/addresses.module';
       ProductVariant,
     ]),
     CartModule,
+    forwardRef(() => VendorsModule), 
+    forwardRef(() => VendorWalletModule), 
     forwardRef(() => AddressesModule),
   ],
   controllers: [OrdersController],
