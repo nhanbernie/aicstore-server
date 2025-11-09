@@ -109,7 +109,7 @@ percentage = (count / totalReviews) × 100
 **Response:**
 ```json
 {
-  "data": {
+  "data": {;
     "totalReviews": 150,
     "averageRating": 4.5,
     "ratingDistribution": { "1": 5, "2": 10, "3": 20, "4": 50, "5": 65 },

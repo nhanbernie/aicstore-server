@@ -6,8 +6,6 @@ import {
   NotFoundException,
   Inject,
   forwardRef,
-  Inject,
-  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductVariant } from '@products/entities/product-variant.entity';
