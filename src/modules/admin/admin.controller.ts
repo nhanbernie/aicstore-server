@@ -40,6 +40,9 @@ import {
   BulkUpdateProductsDto,
   GetProductSalesDto,
 } from './dto/admin-products.dto';
+import {
+  GetTransactionsAdminDto,
+} from './dto/admin-transactions.dto';
 import { CurrencyFormatInterceptor } from '@/common/interceptors/currency-format.interceptor';
 
 @ApiTags('Admin')
@@ -287,5 +290,51 @@ export class AdminController {
     @Query() query: GetProductSalesDto,
   ) {
     return this.adminService.getProductSalesReport(id, query);
+  }
+
+  // ==================== TRANSACTION MONITORING APIS ====================
+
+  @Get('transactions')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get all transactions (Admin view)',
+    description:
+      'Get all transactions with advanced filtering, sorting, and pagination for admin dashboard',
+  })
+  @ResponseMessage('Transactions retrieved successfully')
+  async getAllTransactions(@Query() query: GetTransactionsAdminDto) {
+    return this.adminService.getAllTransactionsAdmin(query);
+  }
+
+  @Get('transactions/:id/details')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get transaction details',
+    description:
+      'Get complete transaction details including order information if applicable',
+  })
+  @ResponseMessage('Transaction details retrieved successfully')
+  async getTransactionDetails(@Param('id') id: string) {
+    return this.adminService.getTransactionDetails(id);
+  }
+
+  @Get('transactions/analytics')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get transaction analytics',
+    description:
+      'Get comprehensive transaction analytics including statistics, trends, and breakdowns',
+  })
+  @ResponseMessage('Transaction analytics retrieved successfully')
+  async getTransactionAnalytics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('groupBy') groupBy?: 'day' | 'week' | 'month',
+  ) {
+    return this.adminService.getTransactionAnalytics(
+      startDate,
+      endDate,
+      groupBy || 'day',
+    );
   }
 }

@@ -6,6 +6,8 @@ import { User } from '@users/entity/user.schema';
 import { Product } from '@modules/products/entities/product.entity';
 import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import { Category } from '@modules/categories/entity/category.entity';
+import { Payment } from '@modules/payments/entitiy/payment.entity';
+import { PaymentStatus } from '@modules/payments/enum/payment-status.enum';
 import { 
   DashboardStatsDto, 
   RevenueReportDto, 
@@ -36,6 +38,16 @@ import {
   ProductSalesReportDto,
   GetProductSalesDto
 } from './dto/admin-products.dto';
+import {
+  GetTransactionsAdminDto,
+  TransactionStatsDto,
+  TransactionByDateDto,
+  TransactionByTypeDto,
+  TransactionByStatusDto,
+  TransactionAnalyticsDto,
+  TransactionDetailsDto,
+  PaginatedTransactionsDto,
+} from './dto/admin-transactions.dto';
 
 @Injectable()
 export class AdminService {
@@ -50,6 +62,8 @@ export class AdminService {
     private readonly orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
   ) {}
 
   // Dashboard Statistics
@@ -990,6 +1004,449 @@ export class AdminService {
         date: item.date,
         quantity: Number(item.quantity) || 0,
         revenue: Number(item.revenue) || 0,
+      })),
+    };
+  }
+
+  // ==================== TRANSACTION MONITORING ====================
+
+  // Get all transactions with filters (Admin view)
+  async getAllTransactionsAdmin(query: GetTransactionsAdminDto): Promise<PaginatedTransactionsDto> {
+    const { 
+      status, 
+      paymentType, 
+      paymentMethod,
+      orderId,
+      minAmount, 
+      maxAmount, 
+      startDate, 
+      endDate,
+      search,
+      page = 1, 
+      limit = 20, 
+      sortBy = 'createdAt', 
+      order = 'DESC' 
+    } = query;
+
+    const queryBuilder = this.paymentRepository
+      .createQueryBuilder('payment');
+
+    // Apply filters
+    if (status) {
+      queryBuilder.andWhere('payment.status = :status', { status });
+    }
+
+    if (paymentType) {
+      queryBuilder.andWhere('payment.paymentType = :paymentType', { paymentType });
+    }
+
+    if (paymentMethod) {
+      queryBuilder.andWhere('payment.paymentMethod = :paymentMethod', { paymentMethod });
+    }
+
+    if (orderId) {
+      queryBuilder.andWhere('payment.orderId = :orderId', { orderId });
+    }
+
+    if (minAmount !== undefined) {
+      queryBuilder.andWhere('payment.amount >= :minAmount', { minAmount });
+    }
+
+    if (maxAmount !== undefined) {
+      queryBuilder.andWhere('payment.amount <= :maxAmount', { maxAmount });
+    }
+
+    if (startDate) {
+      // Set to start of day (00:00:00)
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      queryBuilder.andWhere('payment.createdAt >= :startDate', { 
+        startDate: start 
+      });
+    }
+
+    if (endDate) {
+      // Set to end of day (23:59:59.999) to include all payments created on that day
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      queryBuilder.andWhere('payment.createdAt <= :endDate', { 
+        endDate: end 
+      });
+    }
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(payment.id::text LIKE :search OR payment.orderCode::text LIKE :search OR payment.orderId::text LIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    // Count total
+    const total = await queryBuilder.getCount();
+
+    // Apply pagination and sorting
+    const payments = await queryBuilder
+      .orderBy(`payment.${sortBy}`, order)
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    // Format response
+    const data = payments.map(payment => ({
+      id: payment.id,
+      orderId: payment.orderId,
+      orderCode: (payment as any).orderCode || '',
+      amount: Number(payment.amount),
+      currency: payment.currency,
+      status: payment.status,
+      paymentMethod: payment.paymentMethod,
+      paymentType: (payment as any).paymentType || '',
+      createdAt: payment.createdAt,
+      paidAt: (payment as any).paidAt || undefined,
+    }));
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // Get transaction details
+  async getTransactionDetails(transactionId: string): Promise<TransactionDetailsDto> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id: transactionId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Transaction with ID ${transactionId} not found`);
+    }
+
+    // Get order information if orderId exists
+    let orderInfo: {
+      id: string;
+      orderNumber: string;
+      totalAmount: number;
+      status: string;
+      paymentStatus: string;
+      userId: string;
+      userEmail?: string;
+    } | undefined = undefined;
+    
+    if (payment.orderId) {
+      const order = await this.orderRepository.findOne({
+        where: { id: payment.orderId },
+        relations: ['user'],
+      });
+
+      if (order) {
+        orderInfo = {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          totalAmount: Number(order.totalAmount),
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          userId: order.userId,
+          userEmail: order.user?.email || undefined,
+        };
+      }
+    }
+
+    return {
+      id: payment.id,
+      orderId: payment.orderId,
+      transactionId: payment.transactionId || undefined,
+      orderCode: (payment as any).orderCode || '',
+      amount: Number(payment.amount),
+      currency: payment.currency,
+      status: payment.status,
+      paymentMethod: payment.paymentMethod,
+      paymentType: (payment as any).paymentType || '',
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      paidAt: (payment as any).paidAt || undefined,
+      order: orderInfo,
+    };
+  }
+
+  // Get transaction statistics
+  async getTransactionStats(
+    startDate?: Date, 
+    endDate?: Date, 
+    calculateGrowth: boolean = true
+  ): Promise<TransactionStatsDto> {
+    const queryBuilder = this.paymentRepository.createQueryBuilder('payment');
+
+    if (startDate) {
+      queryBuilder.andWhere('payment.createdAt >= :startDate', { startDate });
+    }
+
+    if (endDate) {
+      queryBuilder.andWhere('payment.createdAt <= :endDate', { endDate });
+    }
+
+    // Total stats
+    const totalStats = await queryBuilder
+      .select('COUNT(payment.id)', 'total')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'totalAmount')
+      .getRawOne();
+
+    // Successful stats
+    const successfulStats = await queryBuilder
+      .clone()
+      .where('payment.status = :status', { status: PaymentStatus.SUCCESS })
+      .select('COUNT(payment.id)', 'total')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'totalAmount')
+      .getRawOne();
+
+    // Pending stats
+    const pendingStats = await queryBuilder
+      .clone()
+      .where('payment.status = :status', { status: PaymentStatus.PENDING })
+      .select('COUNT(payment.id)', 'total')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'totalAmount')
+      .getRawOne();
+
+    // Failed stats
+    const failedStats = await queryBuilder
+      .clone()
+      .where('payment.status = :status', { status: PaymentStatus.FAILED })
+      .select('COUNT(payment.id)', 'total')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'totalAmount')
+      .getRawOne();
+
+    const totalTransactions = Number(totalStats.total) || 0;
+    const totalAmount = Number(totalStats.totalAmount) || 0;
+    const successfulTransactions = Number(successfulStats.total) || 0;
+    const successfulAmount = Number(successfulStats.totalAmount) || 0;
+    const pendingTransactions = Number(pendingStats.total) || 0;
+    const pendingAmount = Number(pendingStats.totalAmount) || 0;
+    const failedTransactions = Number(failedStats.total) || 0;
+    const failedAmount = Number(failedStats.totalAmount) || 0;
+
+    const averageTransactionValue = totalTransactions > 0 
+      ? totalAmount / totalTransactions 
+      : 0;
+
+    const successRate = totalTransactions > 0
+      ? (successfulTransactions / totalTransactions) * 100
+      : 0;
+
+    // Calculate growth if previous period is available and calculateGrowth is true
+    let growth: number | undefined;
+    if (calculateGrowth && startDate && endDate) {
+      const periodDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const previousEndDate = new Date(startDate);
+      previousEndDate.setDate(previousEndDate.getDate() - 1);
+      const previousStartDate = new Date(previousEndDate);
+      previousStartDate.setDate(previousStartDate.getDate() - periodDays);
+
+      // Only calculate previous period stats without growth to avoid infinite recursion
+      const previousStats = await this.getTransactionStats(previousStartDate, previousEndDate, false);
+      if (previousStats.totalAmount > 0) {
+        growth = ((totalAmount - previousStats.totalAmount) / previousStats.totalAmount) * 100;
+      } else if (totalAmount > 0) {
+        growth = 100;
+      } else {
+        growth = 0;
+      }
+    }
+
+    return {
+      totalTransactions,
+      totalAmount,
+      successfulTransactions,
+      successfulAmount,
+      pendingTransactions,
+      pendingAmount,
+      failedTransactions,
+      failedAmount,
+      averageTransactionValue: Number(averageTransactionValue.toFixed(2)),
+      successRate: Number(successRate.toFixed(2)),
+      growth: growth !== undefined ? Number(growth.toFixed(2)) : undefined,
+    };
+  }
+
+  // Get transactions grouped by date
+  async getTransactionsByDate(
+    startDate?: Date, 
+    endDate?: Date,
+    groupBy: 'day' | 'week' | 'month' = 'day'
+  ): Promise<TransactionByDateDto[]> {
+    const queryBuilder = this.paymentRepository.createQueryBuilder('payment');
+
+    if (startDate) {
+      queryBuilder.andWhere('payment.createdAt >= :startDate', { startDate });
+    }
+
+    if (endDate) {
+      queryBuilder.andWhere('payment.createdAt <= :endDate', { endDate });
+    }
+
+    let dateFormat: string;
+    switch (groupBy) {
+      case 'week':
+        dateFormat = "TO_CHAR(payment.createdAt, 'YYYY-WW')";
+        break;
+      case 'month':
+        dateFormat = "TO_CHAR(payment.createdAt, 'YYYY-MM')";
+        break;
+      default:
+        dateFormat = "DATE(payment.createdAt)";
+    }
+
+    const results = await queryBuilder
+      .select(dateFormat, 'date')
+      .addSelect('COUNT(payment.id)', 'count')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'amount')
+      .addSelect(
+        `SUM(CASE WHEN payment.status = '${PaymentStatus.SUCCESS}' THEN 1 ELSE 0 END)`,
+        'successfulCount'
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN payment.status = '${PaymentStatus.SUCCESS}' THEN payment.amount ELSE 0 END), 0)`,
+        'successfulAmount'
+      )
+      .addSelect(
+        `SUM(CASE WHEN payment.status = '${PaymentStatus.PENDING}' THEN 1 ELSE 0 END)`,
+        'pendingCount'
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN payment.status = '${PaymentStatus.PENDING}' THEN payment.amount ELSE 0 END), 0)`,
+        'pendingAmount'
+      )
+      .addSelect(
+        `SUM(CASE WHEN payment.status = '${PaymentStatus.FAILED}' THEN 1 ELSE 0 END)`,
+        'failedCount'
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN payment.status = '${PaymentStatus.FAILED}' THEN payment.amount ELSE 0 END), 0)`,
+        'failedAmount'
+      )
+      .groupBy(dateFormat)
+      .orderBy('date', 'ASC')
+      .getRawMany();
+
+    return results.map(row => ({
+      date: row.date,
+      count: Number(row.count) || 0,
+      amount: Number(row.amount) || 0,
+      successfulCount: Number(row.successfulCount) || 0,
+      successfulAmount: Number(row.successfulAmount) || 0,
+      pendingCount: Number(row.pendingCount) || 0,
+      pendingAmount: Number(row.pendingAmount) || 0,
+      failedCount: Number(row.failedCount) || 0,
+      failedAmount: Number(row.failedAmount) || 0,
+    }));
+  }
+
+  // Get transactions grouped by payment type
+  async getTransactionsByType(startDate?: Date, endDate?: Date): Promise<TransactionByTypeDto[]> {
+    const queryBuilder = this.paymentRepository.createQueryBuilder('payment');
+
+    if (startDate) {
+      queryBuilder.andWhere('payment.createdAt >= :startDate', { startDate });
+    }
+
+    if (endDate) {
+      queryBuilder.andWhere('payment.createdAt <= :endDate', { endDate });
+    }
+
+    const results = await queryBuilder
+      .select('payment.paymentType', 'paymentType')
+      .addSelect('COUNT(payment.id)', 'count')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'amount')
+      .groupBy('payment.paymentType')
+      .orderBy('amount', 'DESC')
+      .getRawMany();
+
+    return results.map(row => ({
+      paymentType: row.paymentType || 'unknown',
+      count: Number(row.count) || 0,
+      amount: Number(row.amount) || 0,
+    }));
+  }
+
+  // Get transactions grouped by status
+  async getTransactionsByStatus(startDate?: Date, endDate?: Date): Promise<TransactionByStatusDto[]> {
+    const queryBuilder = this.paymentRepository.createQueryBuilder('payment');
+
+    if (startDate) {
+      queryBuilder.andWhere('payment.createdAt >= :startDate', { startDate });
+    }
+
+    if (endDate) {
+      queryBuilder.andWhere('payment.createdAt <= :endDate', { endDate });
+    }
+
+    const results = await queryBuilder
+      .select('payment.status', 'status')
+      .addSelect('COUNT(payment.id)', 'count')
+      .addSelect('COALESCE(SUM(payment.amount), 0)', 'amount')
+      .groupBy('payment.status')
+      .orderBy('count', 'DESC')
+      .getRawMany();
+
+    return results.map(row => ({
+      status: row.status as PaymentStatus,
+      count: Number(row.count) || 0,
+      amount: Number(row.amount) || 0,
+    }));
+  }
+
+  // Get comprehensive transaction analytics
+  async getTransactionAnalytics(
+    startDate?: string,
+    endDate?: string,
+    groupBy: 'day' | 'week' | 'month' = 'day'
+  ): Promise<TransactionAnalyticsDto> {
+    // Set startDate to start of day (00:00:00)
+    const start = startDate ? (() => {
+      const date = new Date(startDate);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    })() : undefined;
+    
+    // Set endDate to end of day (23:59:59.999) to include all payments created on that day
+    const end = endDate ? (() => {
+      const date = new Date(endDate);
+      date.setHours(23, 59, 59, 999);
+      return date;
+    })() : undefined;
+
+    const [stats, byDate, byType, byStatus, recentTransactions] = await Promise.all([
+      this.getTransactionStats(start, end),
+      this.getTransactionsByDate(start, end, groupBy),
+      this.getTransactionsByType(start, end),
+      this.getTransactionsByStatus(start, end),
+      this.paymentRepository.find({
+        where: start && end 
+          ? { createdAt: Between(start, end) }
+          : {},
+        order: { createdAt: 'DESC' },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      stats,
+      byDate,
+      byType,
+      byStatus,
+      recentTransactions: recentTransactions.map(tx => ({
+        id: tx.id,
+        orderId: tx.orderId,
+        orderCode: (tx as any).orderCode || '',
+        amount: Number(tx.amount),
+        status: tx.status,
+        paymentMethod: tx.paymentMethod,
+        paymentType: (tx as any).paymentType || '',
+        createdAt: tx.createdAt,
+        paidAt: (tx as any).paidAt || undefined,
       })),
     };
   }

@@ -7,6 +7,7 @@ import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import { User } from '@users/entity/user.schema';
 import { Product } from '@modules/products/entities/product.entity';
 import { Category } from '@modules/categories/entity/category.entity';
+import { Payment } from '@modules/payments/entitiy/payment.entity';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { Category } from '@modules/categories/entity/category.entity';
       User,
       Product,
       Category,
+      Payment,
     ]),
   ],
   controllers: [AdminController],
