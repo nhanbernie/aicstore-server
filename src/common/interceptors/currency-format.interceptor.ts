@@ -106,6 +106,9 @@ export class CurrencyFormatInterceptor implements NestInterceptor {
     if (Array.isArray(data)) {
       // Handle arrays
       return data.map((item) => this.formatData(item));
+    } else if (data instanceof Date) {
+      // Preserve Date objects as-is
+      return data;
     } else if (data && typeof data === 'object') {
       // Handle objects
       const formatted = { ...data };
@@ -115,7 +118,13 @@ export class CurrencyFormatInterceptor implements NestInterceptor {
 
       // Recursively format nested objects
       Object.keys(formatted).forEach((key) => {
-        if (formatted[key] && typeof formatted[key] === 'object') {
+        // Skip Date objects and arrays (arrays are handled separately)
+        if (
+          formatted[key] && 
+          typeof formatted[key] === 'object' && 
+          !(formatted[key] instanceof Date) &&
+          !Array.isArray(formatted[key])
+        ) {
           formatted[key] = this.formatData(formatted[key]);
         }
 
