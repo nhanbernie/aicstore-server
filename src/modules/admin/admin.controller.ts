@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -39,12 +40,14 @@ import {
   BulkUpdateProductsDto,
   GetProductSalesDto,
 } from './dto/admin-products.dto';
+import { CurrencyFormatInterceptor } from '@/common/interceptors/currency-format.interceptor';
 
 @ApiTags('Admin')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ROLE.ADMIN)
+@UseInterceptors(CurrencyFormatInterceptor)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 

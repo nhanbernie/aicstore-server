@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+build
+.tmp
+tmp
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.log
+.env
+.env.*
+prisma/generated

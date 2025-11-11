@@ -13,9 +13,11 @@ import type { OrderItem } from './order-item.entity';
 
 export enum OrderStatus {
   PENDING = 'pending',
-  PROCESSING = 'processing',
-  SHIPPING = 'shipping',
-  DELIVERED = 'delivered',
+  ADMIN_CONFIRMED = 'admin_confirmed', 
+  SHIPPING = 'shipping', 
+  DELIVERED = 'delivered', 
+  COMPLETED = 'completed', 
+  PROCESSING = 'processing', 
   CANCELLED = 'cancelled',
   REFUNDED = 'refunded',
 }
@@ -126,6 +128,50 @@ export class Order {
 
   @Column({ name: 'customer_notes', type: 'text', nullable: true })
   customerNotes: string;
+
+  // Wallet & Fee fields
+  @Column({
+    name: 'projected_fees',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    comment: 'Phí sàn dự kiến (5% của totalAmount)',
+  })
+  projectedFees: number;
+
+  @Column({
+    name: 'platform_fee',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    comment: 'Phí sàn thực tế đã trả',
+  })
+  platformFee: number;
+
+  @Column({
+    name: 'vendor_payout_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    comment: 'Số tiền vendor nhận được (sau khi trừ fee)',
+  })
+  vendorPayoutAmount: number;
+
+  // Status timestamps
+  @Column({ name: 'admin_confirmed_at', type: 'timestamp', nullable: true })
+  adminConfirmedAt: Date;
+
+  @Column({ name: 'shipping_at', type: 'timestamp', nullable: true })
+  shippingStartedAt: Date;
+
+  @Column({ name: 'delivered_at', type: 'timestamp', nullable: true })
+  deliveredByVendorAt: Date;
+
+  @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
+  completedAt: Date;
 
   @OneToMany('OrderItem', (orderItem: any) => orderItem.order, {
     cascade: true,

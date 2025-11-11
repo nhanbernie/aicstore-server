@@ -12,6 +12,7 @@ import { VendorsModule } from '../vendors/vendors.module';
 import { RefreshToken } from './entity/refresh-token.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { EmailService } from './services/email.service';
 import { PasswordResetToken } from './entity/password-reset.schema';
@@ -58,6 +59,7 @@ import { PasswordResetService } from './services/password-reset.service';
     RefreshTokenService,
     LocalStrategy,
     JwtStrategy,
+    GoogleStrategy,
     EmailService,
     PasswordResetService,
   ],

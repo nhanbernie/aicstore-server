@@ -3,10 +3,13 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vendor } from './entity/vendor.schema';
+import { VendorStatus } from '@enums/vendor-status.enum';
 import {
   CreateVendorDto,
   UpdateVendorDto,
@@ -14,6 +17,7 @@ import {
 } from './dto/vendor.dto';
 import { UsersService } from '@users/users.service';
 import { ROLE } from '@enums/auth.enums';
+import { VendorWalletService } from '../vendor-wallet/vendor-wallet.service';
 
 @Injectable()
 export class VendorsService {
@@ -21,25 +25,26 @@ export class VendorsService {
     @InjectRepository(Vendor)
     private readonly vendorsRepository: Repository<Vendor>,
     private readonly usersService: UsersService,
-  ) {}
+    @Inject(forwardRef(() => VendorWalletService))
+    private readonly vendorWalletService: VendorWalletService,
+  ) { }
 
   async create(
     createVendorDto: CreateVendorDto,
     userId: string,
   ): Promise<Vendor> {
-    // Check if user already has a vendor profile
     const existingVendor = await this.findByUserId(userId);
     if (existingVendor) {
       throw new ConflictException('User already has a vendor profile');
     }
 
-    // Update user role to vendor
-    await this.usersService.update(userId, { roles: [ROLE.VENDOR] });
+    // NOTE: User role remains as USER until admin approves
+    // Role will be changed to VENDOR only when status is APPROVED
 
     const vendor = this.vendorsRepository.create({
       ...createVendorDto,
       userId,
-      status: 'pending',
+      status: VendorStatus.PENDING,
     });
 
     return this.vendorsRepository.save(vendor);
@@ -102,7 +107,6 @@ export class VendorsService {
   async remove(id: string): Promise<void> {
     const vendor = await this.findById(id);
 
-    // Update user role back to USER when vendor is deleted
     await this.usersService.update(vendor.userId, { roles: [ROLE.USER] });
 
     await this.vendorsRepository.remove(vendor);
@@ -110,23 +114,40 @@ export class VendorsService {
 
   async approveVendor(id: string): Promise<Vendor> {
     const vendor = await this.findById(id);
-    vendor.status = 'approved';
-    return this.vendorsRepository.save(vendor);
+    
+    // Change user role to VENDOR when approved
+    await this.usersService.update(vendor.userId, { roles: [ROLE.VENDOR] });
+    
+    vendor.status = VendorStatus.APPROVED;
+    const savedVendor = await this.vendorsRepository.save(vendor);
+    
+    await this.vendorWalletService.createWallet(vendor.id);
+    
+    return savedVendor;
   }
 
   async rejectVendor(id: string): Promise<Vendor> {
     const vendor = await this.findById(id);
-    vendor.status = 'rejected';
+    
+    // Keep user role as USER when rejected
+    // If they were previously approved, change back to USER
+    await this.usersService.update(vendor.userId, { roles: [ROLE.USER] });
+    
+    vendor.status = VendorStatus.REJECTED;
     return this.vendorsRepository.save(vendor);
   }
 
   async suspendVendor(id: string): Promise<Vendor> {
     const vendor = await this.findById(id);
-    vendor.status = 'suspended';
+    
+    // Change user role back to USER when suspended
+    await this.usersService.update(vendor.userId, { roles: [ROLE.USER] });
+    
+    vendor.status = VendorStatus.SUSPENDED;
     return this.vendorsRepository.save(vendor);
   }
 
-  async getVendorsByStatus(status: string): Promise<Vendor[]> {
+  async getVendorsByStatus(status: VendorStatus): Promise<Vendor[]> {
     return this.vendorsRepository.find({
       where: { status },
       relations: ['user'],

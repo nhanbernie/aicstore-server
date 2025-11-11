@@ -1,19 +1,17 @@
+import { Vendor } from '@vendors/entity/vendor.schema';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Category } from '../../categories/entity/category.entity';
-import { Vendor } from '@vendors/entity/vendor.schema';
-import { ProductImage } from './product-image.entity';
-import { ProductOption } from './product-option.entity';
-import { ProductVariant } from './product-variant.entity';
+import { ProductImage, ProductOption, ProductVariant } from './';
 
 @Entity('products')
 @Index(['slug'], { unique: true })
@@ -128,6 +126,24 @@ export class Product {
     comment: 'Soft delete flag',
   })
   isActive: boolean;
+
+  @Column({
+    type: 'decimal',
+    precision: 2,
+    scale: 1,
+    name: 'average_rating',
+    default: 0,
+    comment: 'Average rating from reviews (0-5)',
+  })
+  averageRating: number;
+
+  @Column({
+    type: 'int',
+    name: 'total_reviews',
+    default: 0,
+    comment: 'Total number of reviews',
+  })
+  totalReviews: number;
 
   // Relations
   @OneToMany(() => ProductImage, (image) => image.product, { cascade: true })

@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -82,7 +83,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
-    if (user && (await user.validatePassword(password))) {
+    if (user && user.password && (await user.validatePassword(password))) {
       return user;
     }
     return null;
@@ -147,5 +148,80 @@ export class AuthService {
       // Nếu có lỗi, trả về null
       return null;
     }
+  }
+
+  async getUserProfile(userId: string) {
+    // Get fresh user data from database
+    const user = await this.usersService.findById(userId);
+    
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Get vendor status if user has VENDOR role
+    const approvedStatus = await this.getVendorStatus(user);
+
+    return {
+      userId: user.id,
+      email: user.email,
+      roles: user.roles,
+      approvedStatus,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  async updateUserProfile(userId: string, updateDto: any) {
+    // User can only update their own profile
+    const user = await this.usersService.findById(userId);
+    
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Update user profile (only allowed fields)
+    const updatedUser = await this.usersService.update(userId, {
+      firstName: updateDto.firstName,
+      lastName: updateDto.lastName,
+      phoneNumber: updateDto.phoneNumber,
+    });
+
+    return this.getUserProfile(userId);
+  }
+
+  async validateGoogleUser(googleProfile: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    picture?: string;
+  }): Promise<User> {
+    // Check if user exists
+    let user = await this.usersService.findByEmail(googleProfile.email);
+
+    if (!user) {
+      // Create new user if doesn't exist (OAuth users don't need password)
+      user = await this.usersService.createOAuthUser({
+        email: googleProfile.email,
+        firstName: googleProfile.firstName,
+        lastName: googleProfile.lastName,
+        roles: [ROLE.USER],
+      });
+    } else {
+      // Update user info if exists but doesn't have name
+      if (!user.firstName && googleProfile.firstName) {
+        await this.usersService.update(user.id, {
+          firstName: googleProfile.firstName,
+          lastName: googleProfile.lastName,
+        });
+        // Refresh user data
+        user = await this.usersService.findById(user.id);
+      }
+    }
+
+    return user;
   }
 }

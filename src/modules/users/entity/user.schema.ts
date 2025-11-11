@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcryptjs';
-import { ROLE } from '../../../common/enums/auth.enums';
+import { ROLE } from '@/common/enums/auth.enums';
 
 @Entity('users')
 export class User {
@@ -31,9 +31,9 @@ export class User {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   @Exclude()
-  password: string;
+  password: string | null;
 
   @Column({
     type: 'enum',
@@ -59,8 +59,6 @@ export class User {
 
   @BeforeUpdate()
   async hashPasswordOnUpdate() {
-    // Only hash if password is being changed (not already hashed)
-    // bcrypt hashes always start with $2a$, $2b$, or $2y$
     if (this.password && !this.password.startsWith('$2')) {
       const salt = await bcrypt.genSalt(12);
       this.password = await bcrypt.hash(this.password, salt);
@@ -68,6 +66,9 @@ export class User {
   }
 
   async validatePassword(password: string): Promise<boolean> {
+    if (!this.password) {
+      return false;
+    }
     return bcrypt.compare(password, this.password);
   }
 }
