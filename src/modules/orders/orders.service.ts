@@ -232,8 +232,18 @@ export class OrdersService {
       throw new BadRequestException('Cart is empty. Cannot create order.');
     }
 
+    // Filter cart items by cartItemIds if provided
+    let itemsToCheckout = cart.items;
+    if (checkoutDto.cartItemIds && checkoutDto.cartItemIds.length > 0) {
+      itemsToCheckout = cart.items.filter((item) => checkoutDto.cartItemIds!.includes(item.id));
+      
+      if (itemsToCheckout.length === 0) {
+        throw new BadRequestException('No valid cart items selected for checkout.');
+      }
+    }
+
     // Validate all items are still available and in stock
-    for (const cartItem of cart.items) {
+    for (const cartItem of itemsToCheckout) {
       // Check product is still active
       const product = await this.productRepository.findOne({
         where: { id: cartItem.productId, isActive: true },
@@ -272,7 +282,7 @@ export class OrdersService {
     }
 
     // Convert cart items to order items format
-    const orderItems = cart.items.map((cartItem) => ({
+    const orderItems = itemsToCheckout.map((cartItem) => ({
       productId: cartItem.productId,
       variantId: cartItem.variantId || undefined,
       quantity: cartItem.quantity,
@@ -296,8 +306,10 @@ export class OrdersService {
     // Create the order using existing create method
     const order = await this.create(userId, createOrderDto);
 
-    // Clear the cart after successful order creation
-    await this.cartService.clearCart(userId);
+    // Remove only the checked out items from cart (not all items)
+    for (const cartItem of itemsToCheckout) {
+      await this.cartService.removeFromCart(userId, cartItem.id);
+    }
 
     return order;
   }

@@ -217,4 +217,14 @@ export class CheckoutFromCartDto {
   @IsString()
   @IsOptional()
   customerNotes?: string;
+
+  @ApiPropertyOptional({
+    description: 'Array of cart item IDs to checkout (if not provided, all cart items will be checked out)',
+    type: [String],
+    example: ['uuid1', 'uuid2'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  cartItemIds?: string[];
 }
