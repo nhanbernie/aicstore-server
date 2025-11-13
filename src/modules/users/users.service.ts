@@ -69,6 +69,13 @@ export class UsersService {
     });
   }
 
+  async findByIdWithVendor(id: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { id },
+      relations: ['vendor'],
+    });
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findById(id);
 

@@ -1,25 +1,34 @@
+import { Order, OrderStatus } from '@modules/orders/entities/order.entity';
+import { Vendor } from '@modules/vendors/entity/vendor.schema';
 import {
-  Injectable,
   BadRequestException,
-  NotFoundException,
   ForbiddenException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Review } from './entities/review.entity';
-import { CreateReviewDto, UpdateReviewDto, VendorReplyDto } from './dto';
-import { Order, OrderStatus } from '@modules/orders/entities/order.entity';
 import { Product } from '@products/entities/product.entity';
+import { User } from '@users/entity/user.schema';
+import { Repository } from 'typeorm';
+import { CreateReviewDto, UpdateReviewDto, VendorReplyDto } from './dto';
+import { ReviewHistory, ReviewHistoryType } from './entities/review-history.entity';
+import { Review } from './entities/review.entity';
 
 @Injectable()
 export class ReviewsService {
   constructor(
     @InjectRepository(Review)
     private readonly reviewRepository: Repository<Review>,
+    @InjectRepository(ReviewHistory)
+    private readonly reviewHistoryRepository: Repository<ReviewHistory>,
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Vendor)
+    private readonly vendorRepository: Repository<Vendor>,
   ) {}
 
   async create(userId: string, createReviewDto: CreateReviewDto): Promise<Review> {
@@ -70,7 +79,18 @@ export class ReviewsService {
 
     const savedReview = await this.reviewRepository.save(review);
 
-    // 6. Update product rating stats
+    // 6. Create history record for new review
+    await this.createHistoryRecord({
+      reviewId: savedReview.id,
+      type: ReviewHistoryType.REVIEW_CREATED,
+      actorType: 'customer',
+      actorId: userId,
+      rating,
+      content: comment,
+      images: images || [],
+    });
+
+    // 7. Update product rating stats
     await this.updateProductRating(productId);
 
     return this.findOne(savedReview.id);
@@ -102,11 +122,7 @@ export class ReviewsService {
     return review;
   }
 
-  async update(
-    id: string,
-    userId: string,
-    updateReviewDto: UpdateReviewDto,
-  ): Promise<Review> {
+  async update(id: string, userId: string, updateReviewDto: UpdateReviewDto): Promise<Review> {
     const review = await this.reviewRepository.findOne({
       where: { id },
     });
@@ -123,15 +139,24 @@ export class ReviewsService {
     // Check if review is older than 1 month
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    
+
     if (review.createdAt < oneMonthAgo) {
-      throw new BadRequestException('Bạn chỉ có thể chỉnh sửa đánh giá trong vòng 1 tháng sau khi tạo');
+      throw new BadRequestException(
+        'Bạn chỉ có thể chỉnh sửa đánh giá trong vòng 1 tháng sau khi tạo',
+      );
     }
 
     // Check edit count (max 3 times)
     if (review.editCount >= 3) {
       throw new BadRequestException('Bạn chỉ có thể chỉnh sửa đánh giá tối đa 3 lần');
     }
+
+    // Store previous values for history
+    const previousValues = {
+      rating: review.rating,
+      comment: review.comment,
+      images: review.images,
+    };
 
     // Update fields
     if (updateReviewDto.rating !== undefined) {
@@ -148,6 +173,18 @@ export class ReviewsService {
     review.editCount += 1;
 
     const updated = await this.reviewRepository.save(review);
+
+    // Create history record for update
+    await this.createHistoryRecord({
+      reviewId: updated.id,
+      type: ReviewHistoryType.REVIEW_UPDATED,
+      actorType: 'customer',
+      actorId: userId,
+      rating: updated.rating,
+      content: updated.comment,
+      images: updated.images,
+      previousValues,
+    });
 
     // Update product rating stats
     await this.updateProductRating(review.productId);
@@ -171,9 +208,10 @@ export class ReviewsService {
       .getMany();
 
     const totalReviews = reviews.length;
-    const averageRating = totalReviews > 0
-      ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
-      : 0;
+    const averageRating =
+      totalReviews > 0
+        ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
+        : 0;
 
     // Rating distribution
     const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -219,10 +257,24 @@ export class ReviewsService {
       throw new ForbiddenException('Bạn chỉ có thể trả lời đánh giá sản phẩm của shop mình');
     }
 
+    // Store previous reply for history
+    const previousVendorReply = review.vendorReply;
+    const isUpdate = !!previousVendorReply;
+
     review.vendorReply = vendorReplyDto.vendorReply;
     review.vendorReplyAt = new Date();
 
     await this.reviewRepository.save(review);
+
+    // Create history record for vendor reply
+    await this.createHistoryRecord({
+      reviewId: review.id,
+      type: isUpdate ? ReviewHistoryType.VENDOR_REPLY_UPDATED : ReviewHistoryType.VENDOR_REPLIED,
+      actorType: 'vendor',
+      actorId: vendorId,
+      content: vendorReplyDto.vendorReply,
+      previousValues: isUpdate ? { vendorReply: previousVendorReply } : undefined,
+    });
 
     return this.findOne(reviewId);
   }
@@ -269,5 +321,88 @@ export class ReviewsService {
       averageRating: stats.averageRating,
       totalReviews: stats.totalReviews,
     });
+  }
+
+  /**
+   * Get review history (like a chat thread)
+   */
+  async getReviewHistory(reviewId: string): Promise<{
+    reviewId: string;
+    currentRating: number;
+    currentComment?: string;
+    currentVendorReply?: string;
+    totalChanges: number;
+    history: ReviewHistory[];
+  }> {
+    // Get current review
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new NotFoundException('Đánh giá không tồn tại');
+    }
+
+    // Get all history records
+    const history = await this.reviewHistoryRepository.find({
+      where: { reviewId },
+      order: { createdAt: 'ASC' }, // Oldest first (like chat messages)
+    });
+
+    return {
+      reviewId: review.id,
+      currentRating: review.rating,
+      currentComment: review.comment,
+      currentVendorReply: review.vendorReply,
+      totalChanges: history.length,
+      history,
+    };
+  }
+
+  /**
+   * Helper method to create history records
+   */
+  private async createHistoryRecord(data: {
+    reviewId: string;
+    type: ReviewHistoryType;
+    actorType: 'customer' | 'vendor';
+    actorId: string;
+    rating?: number;
+    content?: string;
+    images?: string[];
+    previousValues?: any;
+  }): Promise<void> {
+    // Get actor name
+    let actorName = 'Unknown';
+
+    if (data.actorType === 'customer') {
+      const user = await this.userRepository.findOne({
+        where: { id: data.actorId },
+      });
+      if (user) {
+        actorName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      }
+    } else if (data.actorType === 'vendor') {
+      const vendor = await this.vendorRepository.findOne({
+        where: { id: data.actorId },
+      });
+      if (vendor) {
+        actorName = vendor.businessName;
+      }
+    }
+
+    const history = this.reviewHistoryRepository.create({
+      reviewId: data.reviewId,
+      type: data.type,
+      actorType: data.actorType,
+      actorId: data.actorId,
+      actorName,
+      rating: data.rating,
+      content: data.content,
+      images: data.images,
+      previousValues: data.previousValues,
+    });
+
+    await this.reviewHistoryRepository.save(history);
   }
 }
