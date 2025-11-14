@@ -8,6 +8,11 @@ import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import { Category } from '@modules/categories/entity/category.entity';
 import { Payment } from '@modules/payments/entitiy/payment.entity';
 import { PaymentStatus } from '@modules/payments/enum/payment-status.enum';
+import { VendorWalletService } from '../vendor-wallet/vendor-wallet.service';
+import { VendorWallet } from '../vendor-wallet/entity/vendor-wallet.schema';
+import { VendorWithdrawalRequest, WithdrawalRequestStatus } from '../vendor-wallet/entity/vendor-withdrawal-request.entity';
+import { UpdateWithdrawalRequestStatusDto } from '../vendor-wallet/dto/vendor-wallet.dto';
+import { Vendor } from '../vendors/entity/vendor.schema';
 import { 
   DashboardStatsDto, 
   RevenueReportDto, 
@@ -64,6 +69,13 @@ export class AdminService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+    @InjectRepository(VendorWallet)
+    private readonly vendorWalletRepository: Repository<VendorWallet>,
+    @InjectRepository(VendorWithdrawalRequest)
+    private readonly withdrawalRequestRepository: Repository<VendorWithdrawalRequest>,
+    @InjectRepository(Vendor)
+    private readonly vendorRepository: Repository<Vendor>,
+    private readonly vendorWalletService: VendorWalletService,
   ) {}
 
   // Dashboard Statistics
@@ -147,6 +159,60 @@ export class AdminService {
       ? ((todayOrders - yesterdayOrders) / yesterdayOrders) * 100
       : 0;
 
+    // Total Vendor Wallet Balance (sum of all vendor balances)
+    const totalWalletBalanceResult = await this.vendorWalletRepository
+      .createQueryBuilder('wallet')
+      .select('SUM(wallet.balance)', 'total')
+      .getRawOne();
+    const totalWalletBalance = Number(totalWalletBalanceResult?.total || 0);
+
+    // Total Pending Withdrawal Amount (sum of pending withdrawal requests)
+    const pendingWithdrawalResult = await this.withdrawalRequestRepository
+      .createQueryBuilder('request')
+      .select('SUM(request.amount)', 'total')
+      .where('request.status = :status', { status: WithdrawalRequestStatus.PENDING })
+      .getRawOne();
+    const pendingWithdrawalAmount = Number(pendingWithdrawalResult?.total || 0);
+
+    // Total Paid Withdrawal Amount (sum of paid withdrawal requests)
+    const paidWithdrawalResult = await this.withdrawalRequestRepository
+      .createQueryBuilder('request')
+      .select('SUM(request.amount)', 'total')
+      .where('request.status = :status', { status: WithdrawalRequestStatus.PAID })
+      .getRawOne();
+    const totalPaidWithdrawals = Number(paidWithdrawalResult?.total || 0);
+
+    // Total Vendors
+    const totalVendors = await this.vendorRepository.count();
+
+    // Pending Withdrawal Requests Count
+    const pendingWithdrawalCount = await this.withdrawalRequestRepository.count({
+      where: { status: WithdrawalRequestStatus.PENDING }
+    });
+
+    // Approved Withdrawal Requests Count (waiting for payment)
+    const approvedWithdrawalCount = await this.withdrawalRequestRepository.count({
+      where: { status: WithdrawalRequestStatus.APPROVED }
+    });
+
+    // Get vendors with wallet balances and fees
+    const vendors = await this.vendorRepository.find();
+    const vendorWalletBalances = await Promise.all(
+      vendors.map(async (vendor) => {
+        const wallet = await this.vendorWalletRepository.findOne({
+          where: { vendorId: vendor.id },
+        });
+        return {
+          vendorId: vendor.id,
+          businessName: vendor.businessName,
+          status: vendor.status,
+          balance: wallet ? Number(wallet.balance) : 0,
+          availableBalance: wallet ? wallet.getAvailableBalance() : 0,
+          totalFeesPaid: wallet ? Number(wallet.totalFeesPaid) : 0,
+        };
+      }),
+    );
+
     return {
       totalRevenue,
       totalOrders,
@@ -159,6 +225,13 @@ export class AdminService {
       todayNewUsers,
       revenueGrowth: Number(revenueGrowth.toFixed(2)),
       ordersGrowth: Number(ordersGrowth.toFixed(2)),
+      totalWalletBalance,
+      pendingWithdrawalAmount,
+      totalPaidWithdrawals,
+      totalVendors,
+      pendingWithdrawalCount,
+      approvedWithdrawalCount,
+      vendorWalletBalances,
     };
   }
 
@@ -1448,6 +1521,95 @@ export class AdminService {
         createdAt: tx.createdAt,
         paidAt: (tx as any).paidAt || undefined,
       })),
+    };
+  }
+
+  // ==================== VENDOR WITHDRAWAL MANAGEMENT METHODS ====================
+
+  async getAllWithdrawalRequests(
+    page: number = 1,
+    limit: number = 20,
+    status?: string,
+    vendorId?: string,
+  ) {
+    const withdrawalStatus = status ? (status as WithdrawalRequestStatus) : undefined;
+    const result = await this.vendorWalletService.getAllWithdrawalRequests(
+      page,
+      limit,
+      withdrawalStatus,
+      vendorId,
+    );
+
+    return {
+      success: true,
+      message: 'Withdrawal requests retrieved successfully',
+      data: result.requests,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
+    };
+  }
+
+  async getWithdrawalRequestDetails(id: string) {
+    const request = await this.vendorWalletService.getWithdrawalRequestById(id);
+    return {
+      success: true,
+      message: 'Withdrawal request details retrieved successfully',
+      data: request,
+    };
+  }
+
+  async approveWithdrawalRequest(
+    id: string,
+    adminId: string,
+    updateDto: UpdateWithdrawalRequestStatusDto,
+  ) {
+    const request = await this.vendorWalletService.approveWithdrawalRequest(
+      id,
+      adminId,
+      updateDto,
+    );
+    return {
+      success: true,
+      message: 'Withdrawal request approved successfully',
+      data: request,
+    };
+  }
+
+  async rejectWithdrawalRequest(
+    id: string,
+    adminId: string,
+    updateDto: UpdateWithdrawalRequestStatusDto,
+  ) {
+    const request = await this.vendorWalletService.rejectWithdrawalRequest(
+      id,
+      adminId,
+      updateDto,
+    );
+    return {
+      success: true,
+      message: 'Withdrawal request rejected successfully',
+      data: request,
+    };
+  }
+
+  async markWithdrawalRequestAsPaid(
+    id: string,
+    adminId: string,
+    updateDto: UpdateWithdrawalRequestStatusDto,
+  ) {
+    const request = await this.vendorWalletService.markWithdrawalRequestAsPaid(
+      id,
+      adminId,
+      updateDto,
+    );
+    return {
+      success: true,
+      message: 'Withdrawal request marked as paid successfully',
+      data: request,
     };
   }
 }

@@ -35,6 +35,48 @@ export class DashboardStatsDto {
 
   @ApiProperty({ description: 'Orders growth percentage', example: 10.2 })
   ordersGrowth: number;
+
+  @ApiProperty({ description: 'Total wallet balance of all vendors', example: 50000000 })
+  totalWalletBalance: number;
+
+  @ApiProperty({ description: 'Total pending withdrawal amount', example: 10000000 })
+  pendingWithdrawalAmount: number;
+
+  @ApiProperty({ description: 'Total paid withdrawal amount', example: 20000000 })
+  totalPaidWithdrawals: number;
+
+  @ApiProperty({ description: 'Total vendors count', example: 50 })
+  totalVendors: number;
+
+  @ApiProperty({ description: 'Pending withdrawal requests count', example: 5 })
+  pendingWithdrawalCount: number;
+
+  @ApiProperty({ description: 'Approved withdrawal requests count (waiting for payment)', example: 3 })
+  approvedWithdrawalCount: number;
+
+  @ApiProperty({
+    description: 'Vendor wallet balances and fees list',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        vendorId: { type: 'string' },
+        businessName: { type: 'string' },
+        status: { type: 'string' },
+        balance: { type: 'number' },
+        availableBalance: { type: 'number' },
+        totalFeesPaid: { type: 'number' },
+      },
+    },
+  })
+  vendorWalletBalances: Array<{
+    vendorId: string;
+    businessName: string;
+    status: string;
+    balance: number;
+    availableBalance: number;
+    totalFeesPaid: number;
+  }>;
 }
 
 // Revenue Report Query

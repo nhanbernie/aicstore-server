@@ -44,6 +44,7 @@ import {
   GetTransactionsAdminDto,
 } from './dto/admin-transactions.dto';
 import { CurrencyFormatInterceptor } from '@/common/interceptors/currency-format.interceptor';
+import { UpdateWithdrawalRequestStatusDto } from '../vendor-wallet/dto/vendor-wallet.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth('JWT-auth')
@@ -335,6 +336,98 @@ export class AdminController {
       startDate,
       endDate,
       groupBy || 'day',
+    );
+  }
+
+  // ==================== VENDOR WITHDRAWAL MANAGEMENT APIS ====================
+
+  @Get('vendor-withdrawals')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get all vendor withdrawal requests',
+    description:
+      'Get all vendor withdrawal requests with filtering by status and vendor, with pagination',
+  })
+  @ResponseMessage('Withdrawal requests retrieved successfully')
+  async getAllWithdrawalRequests(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+    @Query('status') status?: string,
+    @Query('vendorId') vendorId?: string,
+  ) {
+    return this.adminService.getAllWithdrawalRequests(
+      page,
+      limit,
+      status,
+      vendorId,
+    );
+  }
+
+  @Get('vendor-withdrawals/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get withdrawal request details',
+    description: 'Get detailed information about a specific withdrawal request',
+  })
+  @ResponseMessage('Withdrawal request details retrieved successfully')
+  async getWithdrawalRequestDetails(@Param('id') id: string) {
+    return this.adminService.getWithdrawalRequestDetails(id);
+  }
+
+  @Patch('vendor-withdrawals/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Approve withdrawal request',
+    description: 'Approve a pending withdrawal request',
+  })
+  @ResponseMessage('Withdrawal request approved successfully')
+  async approveWithdrawalRequest(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() updateDto: UpdateWithdrawalRequestStatusDto,
+  ) {
+    return this.adminService.approveWithdrawalRequest(
+      id,
+      req.user.userId,
+      updateDto,
+    );
+  }
+
+  @Patch('vendor-withdrawals/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reject withdrawal request',
+    description: 'Reject a pending withdrawal request',
+  })
+  @ResponseMessage('Withdrawal request rejected successfully')
+  async rejectWithdrawalRequest(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() updateDto: UpdateWithdrawalRequestStatusDto,
+  ) {
+    return this.adminService.rejectWithdrawalRequest(
+      id,
+      req.user.userId,
+      updateDto,
+    );
+  }
+
+  @Patch('vendor-withdrawals/:id/mark-paid')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Mark withdrawal request as paid',
+    description: 'Mark an approved withdrawal request as paid after manual transfer',
+  })
+  @ResponseMessage('Withdrawal request marked as paid successfully')
+  async markWithdrawalRequestAsPaid(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() updateDto: UpdateWithdrawalRequestStatusDto,
+  ) {
+    return this.adminService.markWithdrawalRequestAsPaid(
+      id,
+      req.user.userId,
+      updateDto,
     );
   }
 }
