@@ -1,48 +1,74 @@
+import { CloudinaryService } from '@/common/services/cloudinary.service';
+import { ResponseMessage } from '@decorators/response-message.decorator';
+import { Roles } from '@decorators/roles.decorator';
+import { ROLE } from '@enums/auth.enums';
+import { RolesGuard } from '@guards/roles.guard';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
-  Patch,
   Param,
-  UseGuards,
-  Request,
   ParseUUIDPipe,
+  Patch,
+  Post,
+  Request,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
-  ApiTags,
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import { ReviewsService } from './reviews.service';
-import { CreateReviewDto, UpdateReviewDto, VendorReplyDto, ReviewResponseDto } from './dto';
-import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
-import { RolesGuard } from '@guards/roles.guard';
-import { Roles } from '@decorators/roles.decorator';
-import { ROLE } from '@enums/auth.enums';
-import { ResponseMessage } from '@decorators/response-message.decorator';
+import { imageUploadConfig } from '@utils/file-upload.util';
 import { plainToClass } from 'class-transformer';
+import {
+  CreateReviewDto,
+  ReviewHistoryItemDto,
+  ReviewHistoryResponseDto,
+  ReviewResponseDto,
+  UpdateReviewDto,
+  VendorReplyDto,
+} from './dto';
+import { ReviewsService } from './reviews.service';
 
 @ApiTags('Reviews')
 @ApiBearerAuth('JWT-auth')
 @Controller('reviews')
 export class ReviewsController {
-  constructor(private readonly reviewsService: ReviewsService) {}
+  constructor(
+    private readonly reviewsService: ReviewsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('images', 5, imageUploadConfig))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Create product review',
-    description: 'Create a review for a product (order must be DELIVERED)',
+    description:
+      'Create a review for a product (order must be DELIVERED). Can upload up to 5 images.',
   })
   @ApiResponse({ status: 201, description: 'Review created', type: ReviewResponseDto })
   @ResponseMessage('Đánh giá đã được tạo thành công')
   async create(
     @Request() req,
     @Body() createReviewDto: CreateReviewDto,
+    @UploadedFiles() files?: Express.Multer.File[],
   ): Promise<ReviewResponseDto> {
+    // Upload images to Cloudinary if provided
+    if (files && files.length > 0) {
+      const uploadResults = await this.cloudinaryService.uploadMultipleImages(files, 'reviews');
+      createReviewDto.images = uploadResults.map((result) => result.secure_url);
+    }
+
     const review = await this.reviewsService.create(req.user.userId, createReviewDto);
     return plainToClass(ReviewResponseDto, review, { excludeExtraneousValues: true });
   }
@@ -90,9 +116,11 @@ export class ReviewsController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('images', 5, imageUploadConfig))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Update review',
-    description: 'Update your own review',
+    description: 'Update your own review. Can upload up to 5 images.',
   })
   @ApiParam({ name: 'id', description: 'Review ID' })
   @ApiResponse({ status: 200, type: ReviewResponseDto })
@@ -101,7 +129,14 @@ export class ReviewsController {
     @Request() req,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateReviewDto: UpdateReviewDto,
+    @UploadedFiles() files?: Express.Multer.File[],
   ): Promise<ReviewResponseDto> {
+    // Upload new images to Cloudinary if provided
+    if (files && files.length > 0) {
+      const uploadResults = await this.cloudinaryService.uploadMultipleImages(files, 'reviews');
+      updateReviewDto.images = uploadResults.map((result) => result.secure_url);
+    }
+
     const review = await this.reviewsService.update(id, req.user.userId, updateReviewDto);
     return plainToClass(ReviewResponseDto, review, { excludeExtraneousValues: true });
   }
@@ -138,11 +173,28 @@ export class ReviewsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() vendorReplyDto: VendorReplyDto,
   ): Promise<ReviewResponseDto> {
-    const review = await this.reviewsService.addVendorReply(
-      id,
-      req.user.vendorId,
-      vendorReplyDto,
-    );
+    const review = await this.reviewsService.addVendorReply(id, req.user.vendorId, vendorReplyDto);
     return plainToClass(ReviewResponseDto, review, { excludeExtraneousValues: true });
+  }
+
+  @Get(':id/history')
+  @ApiOperation({
+    summary: 'Get review history (like chat thread)',
+    description:
+      'Get all changes history of a review - shows conversation between customer and vendor',
+  })
+  @ApiParam({ name: 'id', description: 'Review ID' })
+  @ApiResponse({ status: 200, type: ReviewHistoryResponseDto })
+  @ResponseMessage('Lấy lịch sử đánh giá thành công')
+  async getReviewHistory(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ReviewHistoryResponseDto> {
+    const data = await this.reviewsService.getReviewHistory(id);
+    return {
+      ...data,
+      history: data.history.map((item) =>
+        plainToClass(ReviewHistoryItemDto, item, { excludeExtraneousValues: true }),
+      ),
+    } as ReviewHistoryResponseDto;
   }
 }

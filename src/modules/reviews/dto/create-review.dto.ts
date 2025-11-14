@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsString, IsOptional, IsArray, Min, Max, IsNotEmpty, MaxLength, IsUUID } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateReviewDto {
   @ApiProperty({
@@ -40,12 +49,13 @@ export class CreateReviewDto {
   comment?: string;
 
   @ApiPropertyOptional({
-    description: 'Review images URLs',
-    type: [String],
-    example: ['https://example.com/image1.jpg'],
+    description: 'Review images (upload files)',
+    type: 'array',
+    items: {
+      type: 'string',
+      format: 'binary',
+    },
   })
-  @IsArray()
-  @IsString({ each: true })
   @IsOptional()
   images?: string[];
 }

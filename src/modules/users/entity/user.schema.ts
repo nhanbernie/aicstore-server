@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   BeforeInsert,
   BeforeUpdate,
+  OneToOne,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcryptjs';
@@ -42,6 +43,10 @@ export class User {
     default: [ROLE.USER],
   })
   roles: string[];
+
+  // Relations
+  @OneToOne('Vendor', 'user')
+  vendor?: any;
 
   @CreateDateColumn()
   createdAt: Date;
