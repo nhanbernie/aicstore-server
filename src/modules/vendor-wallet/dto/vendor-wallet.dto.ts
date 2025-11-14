@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString, Min, IsEnum } from 'class-validator';
 import { VendorTransactionType } from '../entity/vendor-transaction.entity';
+import { WithdrawalRequestStatus } from '../entity/vendor-withdrawal-request.entity';
 
 export class DepositWalletDto {
   @ApiProperty({
@@ -68,5 +69,84 @@ export class VendorTransactionResponseDto {
 
   @ApiPropertyOptional()
   orderId?: string;
+}
+
+export class CreateWithdrawalRequestDto {
+  @ApiProperty({
+    description: 'Số tiền yêu cầu rút',
+    example: 1000000,
+    minimum: 100000,
+  })
+  @IsNumber()
+  @Min(100000, { message: 'Số tiền rút tối thiểu là 100,000 VND' })
+  amount: number;
+
+  @ApiPropertyOptional({
+    description: 'Ghi chú từ vendor',
+    example: 'Rút tiền để chi trả nhà cung cấp',
+  })
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+export class UpdateWithdrawalRequestStatusDto {
+  @ApiPropertyOptional({
+    description: 'Ghi chú từ admin',
+    example: 'Đã kiểm tra và duyệt yêu cầu',
+  })
+  @IsString()
+  @IsOptional()
+  adminNotes?: string;
+}
+
+export class WithdrawalRequestResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  vendorId: string;
+
+  @ApiProperty()
+  amount: number;
+
+  @ApiProperty({ enum: WithdrawalRequestStatus })
+  status: WithdrawalRequestStatus;
+
+  @ApiPropertyOptional()
+  bankName?: string;
+
+  @ApiPropertyOptional()
+  bankAccountNumber?: string;
+
+  @ApiPropertyOptional()
+  accountHolderName?: string;
+
+  @ApiPropertyOptional()
+  notes?: string;
+
+  @ApiPropertyOptional()
+  adminNotes?: string;
+
+  @ApiPropertyOptional()
+  approvedBy?: string;
+
+  @ApiPropertyOptional()
+  paidBy?: string;
+
+  @ApiPropertyOptional()
+  approvedAt?: Date;
+
+  @ApiPropertyOptional()
+  paidAt?: Date;
+
+  @ApiPropertyOptional()
+  rejectedAt?: Date;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
 }
 

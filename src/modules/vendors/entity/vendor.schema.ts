@@ -36,6 +36,18 @@ export class Vendor {
   @Column({ nullable: true })
   taxId: string;
 
+  @Column({ nullable: true })
+  bankName: string;
+
+  @Column({ nullable: true })
+  bankAccountNumber: string;
+
+  @Column({ nullable: true })
+  accountHolderName: string;
+
+  @Column({ nullable: true })
+  bankBranch: string;
+
   @Column({
     type: 'enum',
     enum: VendorStatus,

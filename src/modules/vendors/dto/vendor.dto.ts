@@ -61,6 +61,42 @@ class BaseVendorDto {
   @IsString()
   @IsOptional()
   taxId?: string;
+
+  @ApiProperty({
+    example: 'Vietcombank',
+    description: 'Bank name',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  bankName?: string;
+
+  @ApiProperty({
+    example: '1234567890',
+    description: 'Bank account number',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  bankAccountNumber?: string;
+
+  @ApiProperty({
+    example: 'Nguyen Van A',
+    description: 'Account holder name',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  accountHolderName?: string;
+
+  @ApiProperty({
+    example: 'PGD Hồ Chí Minh',
+    description: 'Bank branch',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  bankBranch?: string;
 }
 
 export class CreateVendorDto extends BaseVendorDto {}
@@ -113,6 +149,22 @@ export class VendorResponseDto {
   @ApiProperty({ example: 'TAX123456789' })
   @Expose()
   taxId?: string;
+
+  @ApiProperty({ example: 'Vietcombank', required: false })
+  @Expose()
+  bankName?: string;
+
+  @ApiProperty({ example: '1234567890', required: false })
+  @Expose()
+  bankAccountNumber?: string;
+
+  @ApiProperty({ example: 'Nguyen Van A', required: false })
+  @Expose()
+  accountHolderName?: string;
+
+  @ApiProperty({ example: 'PGD Hồ Chí Minh', required: false })
+  @Expose()
+  bankBranch?: string;
 
   @ApiProperty({
     example: 'approved',
