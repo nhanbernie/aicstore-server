@@ -2,23 +2,31 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { VendorWallet } from './entity/vendor-wallet.schema';
 import { VendorTransaction, VendorTransactionType, VendorTransactionStatus } from './entity/vendor-transaction.entity';
-import { DepositWalletDto } from './dto/vendor-wallet.dto';
+import { VendorWithdrawalRequest, WithdrawalRequestStatus } from './entity/vendor-withdrawal-request.entity';
+import { DepositWalletDto, CreateWithdrawalRequestDto, UpdateWithdrawalRequestStatusDto } from './dto/vendor-wallet.dto';
 import { PaymentsService } from '@modules/payments/payments.service';
 import { ConfigService } from '@nestjs/config';
+import { VendorsService } from '../vendors/vendors.service';
 
 @Injectable()
 export class VendorWalletService {
   constructor(
     @InjectRepository(VendorWallet)
     private readonly walletRepository: Repository<VendorWallet>,
+    @InjectRepository(VendorWithdrawalRequest)
+    private readonly withdrawalRequestRepository: Repository<VendorWithdrawalRequest>,
     private readonly paymentsService: PaymentsService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
+    @Inject(forwardRef(() => VendorsService))
+    private readonly vendorsService: VendorsService,
   ) { }
 
   async createWallet(vendorId: string): Promise<VendorWallet> {
@@ -306,6 +314,251 @@ export class VendorWalletService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  // ==================== WITHDRAWAL REQUEST METHODS ====================
+
+  async createWithdrawalRequest(
+    vendorId: string,
+    createDto: CreateWithdrawalRequestDto,
+  ): Promise<VendorWithdrawalRequest> {
+    const wallet = await this.getWallet(vendorId);
+    const vendor = await this.vendorsService.findById(vendorId);
+
+    // Kiểm tra số dư khả dụng
+    const availableBalance = wallet.getAvailableBalance();
+    if (availableBalance < createDto.amount) {
+      throw new BadRequestException(
+        `Số dư khả dụng không đủ. Số dư hiện tại: ${availableBalance.toLocaleString('vi-VN')} VND`,
+      );
+    }
+
+    // Kiểm tra thông tin ngân hàng
+    if (!vendor.bankName || !vendor.bankAccountNumber || !vendor.accountHolderName) {
+      throw new BadRequestException(
+        'Vui lòng cập nhật thông tin tài khoản ngân hàng trong hồ sơ trước khi tạo yêu cầu rút tiền',
+      );
+    }
+
+    // Kiểm tra xem có yêu cầu đang pending không
+    const pendingRequest = await this.withdrawalRequestRepository.findOne({
+      where: {
+        vendorId,
+        status: WithdrawalRequestStatus.PENDING,
+      },
+    });
+
+    if (pendingRequest) {
+      throw new BadRequestException(
+        'Bạn đã có một yêu cầu rút tiền đang chờ xử lý. Vui lòng đợi yêu cầu hiện tại được xử lý trước khi tạo yêu cầu mới.',
+      );
+    }
+
+    const withdrawalRequest = this.withdrawalRequestRepository.create({
+      vendorId,
+      amount: createDto.amount,
+      status: WithdrawalRequestStatus.PENDING,
+      bankName: vendor.bankName,
+      bankAccountNumber: vendor.bankAccountNumber,
+      accountHolderName: vendor.accountHolderName,
+      notes: createDto.notes,
+    });
+
+    return await this.withdrawalRequestRepository.save(withdrawalRequest);
+  }
+
+  async getWithdrawalRequests(
+    vendorId: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    const [requests, total] = await this.withdrawalRequestRepository.findAndCount({
+      where: { vendorId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      requests,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getAllWithdrawalRequests(
+    page: number = 1,
+    limit: number = 20,
+    status?: WithdrawalRequestStatus,
+    vendorId?: string,
+  ) {
+    const where: any = {};
+    if (status) {
+      where.status = status;
+    }
+    if (vendorId) {
+      where.vendorId = vendorId;
+    }
+
+    const [requests, total] = await this.withdrawalRequestRepository.findAndCount({
+      where,
+      relations: ['vendor', 'vendor.user'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      requests,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getWithdrawalRequestById(id: string): Promise<VendorWithdrawalRequest> {
+    const request = await this.withdrawalRequestRepository.findOne({
+      where: { id },
+      relations: ['vendor', 'vendor.user'],
+    });
+
+    if (!request) {
+      throw new NotFoundException('Withdrawal request not found');
+    }
+
+    return request;
+  }
+
+  async approveWithdrawalRequest(
+    id: string,
+    adminId: string,
+    updateDto: UpdateWithdrawalRequestStatusDto,
+  ): Promise<VendorWithdrawalRequest> {
+    const request = await this.getWithdrawalRequestById(id);
+
+    if (request.status !== WithdrawalRequestStatus.PENDING) {
+      throw new BadRequestException(
+        `Không thể duyệt yêu cầu với trạng thái hiện tại: ${request.status}`,
+      );
+    }
+
+    const wallet = await this.getWallet(request.vendorId);
+    const availableBalance = wallet.getAvailableBalance();
+
+    if (availableBalance < request.amount) {
+      throw new BadRequestException(
+        `Vendor không đủ số dư để rút. Số dư khả dụng: ${availableBalance.toLocaleString('vi-VN')} VND`,
+      );
+    }
+
+    request.status = WithdrawalRequestStatus.APPROVED;
+    request.approvedBy = adminId;
+    request.approvedAt = new Date();
+    if (updateDto.adminNotes !== undefined) {
+      request.adminNotes = updateDto.adminNotes;
+    }
+
+    return await this.withdrawalRequestRepository.save(request);
+  }
+
+  async rejectWithdrawalRequest(
+    id: string,
+    adminId: string,
+    updateDto: UpdateWithdrawalRequestStatusDto,
+  ): Promise<VendorWithdrawalRequest> {
+    const request = await this.getWithdrawalRequestById(id);
+
+    if (request.status !== WithdrawalRequestStatus.PENDING) {
+      throw new BadRequestException(
+        `Không thể từ chối yêu cầu với trạng thái hiện tại: ${request.status}`,
+      );
+    }
+
+    request.status = WithdrawalRequestStatus.REJECTED;
+    request.approvedBy = adminId;
+    request.rejectedAt = new Date();
+    if (updateDto.adminNotes !== undefined) {
+      request.adminNotes = updateDto.adminNotes;
+    }
+
+    return await this.withdrawalRequestRepository.save(request);
+  }
+
+  async markWithdrawalRequestAsPaid(
+    id: string,
+    adminId: string,
+    updateDto: UpdateWithdrawalRequestStatusDto,
+  ): Promise<VendorWithdrawalRequest> {
+    const request = await this.getWithdrawalRequestById(id);
+
+    if (request.status !== WithdrawalRequestStatus.APPROVED) {
+      throw new BadRequestException(
+        `Chỉ có thể đánh dấu "đã thanh toán" cho yêu cầu đã được duyệt. Trạng thái hiện tại: ${request.status}`,
+      );
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const wallet = await queryRunner.manager.findOne(VendorWallet, {
+        where: { vendorId: request.vendorId },
+      });
+
+      if (!wallet) {
+        throw new NotFoundException('Wallet not found');
+      }
+
+      const balanceBefore = Number(wallet.balance);
+      const balanceAfter = balanceBefore - Number(request.amount);
+
+      if (balanceAfter < 0) {
+        throw new BadRequestException('Số dư không đủ để thực hiện rút tiền');
+      }
+
+      // Cập nhật wallet
+      await queryRunner.manager.update(VendorWallet, wallet.id, {
+        balance: balanceAfter,
+        totalWithdrawn: Number(wallet.totalWithdrawn) + Number(request.amount),
+      });
+
+      // Tạo transaction record
+      const transaction = this.dataSource.getRepository(VendorTransaction).create({
+        vendorId: request.vendorId,
+        type: VendorTransactionType.WITHDRAWAL,
+        status: VendorTransactionStatus.COMPLETED,
+        amount: -Number(request.amount), // Số âm vì là rút tiền
+        balanceBefore,
+        balanceAfter,
+        description: `Rút tiền: ${Number(request.amount).toLocaleString('vi-VN')} VND`,
+        notes: updateDto.adminNotes,
+        completedAt: new Date(),
+      });
+
+      await queryRunner.manager.save(transaction);
+
+      // Cập nhật withdrawal request
+      request.status = WithdrawalRequestStatus.PAID;
+      request.paidBy = adminId;
+      request.paidAt = new Date();
+      if (updateDto.adminNotes) {
+        request.adminNotes = updateDto.adminNotes;
+      }
+
+      await queryRunner.manager.save(request);
+      await queryRunner.commitTransaction();
+
+      return request;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
 

@@ -14,7 +14,7 @@ import { RolesGuard } from '@guards/roles.guard';
 import { Roles } from '@decorators/roles.decorator';
 import { ROLE } from '@enums/auth.enums';
 import { VendorWalletService } from './vendor-wallet.service';
-import { DepositWalletDto, WalletBalanceResponseDto } from './dto/vendor-wallet.dto';
+import { DepositWalletDto, WalletBalanceResponseDto, CreateWithdrawalRequestDto, WithdrawalRequestResponseDto } from './dto/vendor-wallet.dto';
 import { VendorsService } from '../vendors/vendors.service';
 import { ResponseMessage } from '@decorators/response-message.decorator';
 
@@ -100,6 +100,64 @@ export class VendorWalletController {
       success: true,
       message: 'Lấy lịch sử giao dịch thành công',
       data: result.transactions,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
+    };
+  }
+
+  @Post('withdraw')
+  @ApiOperation({ summary: 'Tạo yêu cầu rút tiền' })
+  @ApiResponse({ status: 201, type: WithdrawalRequestResponseDto })
+  @ResponseMessage('Tạo yêu cầu rút tiền thành công')
+  async createWithdrawalRequest(
+    @Request() req,
+    @Body() createDto: CreateWithdrawalRequestDto,
+  ) {
+    const vendor = await this.vendorsService.findByUserId(req.user.userId);
+    if (!vendor) {
+      throw new Error('Vendor profile not found');
+    }
+
+    const request = await this.walletService.createWithdrawalRequest(
+      vendor.id,
+      createDto,
+    );
+
+    return {
+      success: true,
+      message: 'Tạo yêu cầu rút tiền thành công',
+      data: request,
+    };
+  }
+
+  @Get('withdrawals')
+  @ApiOperation({ summary: 'Lấy danh sách yêu cầu rút tiền của vendor' })
+  @ApiResponse({ status: 200, description: 'Lấy danh sách yêu cầu rút tiền thành công' })
+  @ResponseMessage('Lấy danh sách yêu cầu rút tiền thành công')
+  async getWithdrawalRequests(
+    @Request() req,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+  ) {
+    const vendor = await this.vendorsService.findByUserId(req.user.userId);
+    if (!vendor) {
+      throw new Error('Vendor profile not found');
+    }
+
+    const result = await this.walletService.getWithdrawalRequests(
+      vendor.id,
+      page,
+      limit,
+    );
+
+    return {
+      success: true,
+      message: 'Lấy danh sách yêu cầu rút tiền thành công',
+      data: result.requests,
       meta: {
         total: result.total,
         page: result.page,
