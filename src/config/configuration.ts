@@ -26,4 +26,32 @@ export default () => ({
   bcrypt: {
     rounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
   },
+  client: {
+    url: process.env.CLIENT_URL || 'http://localhost:3001',
+    paymentCancelUrl: (() => {
+      const baseUrl = process.env.CLIENT_URL || 'http://localhost:3001';
+      const path = process.env.PAYMENT_CANCEL_URL || '/payment/cancel';
+      return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
+    })(),
+    paymentReturnUrl: (() => {
+      const baseUrl = process.env.CLIENT_URL || 'http://localhost:3001';
+      const path = process.env.PAYMENT_RETURN_URL || '/payment/success';
+      return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
+    })(),
+  },
+  server: {
+    url: process.env.SERVER_URL || `http://localhost:${process.env.PORT || '3000'}`,
+    googleCallbackUrl: (() => {
+      const baseUrl = process.env.SERVER_URL || `http://localhost:${process.env.PORT || '3000'}`;
+      const path = process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback';
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
+    })(),
+  },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+  },
 });

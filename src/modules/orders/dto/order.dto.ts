@@ -228,3 +228,13 @@ export class CheckoutFromCartDto {
   @IsUUID('4', { each: true })
   cartItemIds?: string[];
 }
+
+export class ReorderDto {
+  @ApiPropertyOptional({
+    description: 'Whether to add items to cart (true) or create order directly (false). Default: true',
+    example: true,
+    default: true,
+  })
+  @IsOptional()
+  addToCart?: boolean = true;
+}
