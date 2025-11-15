@@ -42,10 +42,14 @@ import { PasswordResetService } from './services/password-reset.service';
           host: configService.get<string>('MAIL_HOST'),
           port: configService.get<number>('MAIL_PORT'),
           secure: false,
+          requireTLS: configService.get<number>('MAIL_PORT') === 587, // Enable TLS for port 587
           auth: {
             user: configService.get<string>('MAIL_USER'),
             pass: configService.get<string>('MAIL_PASS'),
           },
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 10000, 
+          socketTimeout: 10000,
         },
         defaults: {
           from: `"AICShop" <${configService.get<string>('MAIL_FROM')}>`,
