@@ -44,6 +44,23 @@ export class OrdersService {
     private readonly addressesService: AddressesService,
   ) {}
 
+  /**
+   * Sync product.stockQty with the total of all its variants' stockQty
+   * Call this after any variant stock change to keep product stock in sync
+   */
+  private async syncProductStockFromVariants(productId: string): Promise<void> {
+    // Get all variants of the product
+    const variants = await this.productVariantRepository.find({
+      where: { productId },
+    });
+
+    // Calculate total stock from all variants
+    const totalVariantStock = variants.reduce((sum, variant) => sum + variant.stockQty, 0);
+
+    // Update product stock
+    await this.productRepository.update({ id: productId }, { stockQty: totalVariantStock });
+  }
+
   async create(userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
     // Validate shipping info: must have either addressId OR manual shipping fields
     if (
@@ -219,6 +236,9 @@ export class OrdersService {
           'stockQty',
           orderItemDto.quantity,
         );
+
+        // Sync product stock from all variants
+        await this.syncProductStockFromVariants(orderItemDto.productId);
       } else {
         // Deduct from product
         await this.productRepository.decrement(
