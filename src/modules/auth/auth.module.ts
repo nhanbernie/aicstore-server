@@ -37,38 +37,27 @@ import { PasswordResetService } from './services/password-reset.service';
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => {
-        const mailHost = configService.get<string>('MAIL_HOST');
-        const mailPort = configService.get<number>('MAIL_PORT') || 587;
-        const mailUser = configService.get<string>('MAIL_USER');
-        const mailPass = configService.get<string>('MAIL_PASS');
-        
-        // Determine secure and TLS settings based on port
-        const isSecurePort = mailPort === 465;
-        const isTlsPort = mailPort === 587;
-        
-        return {
-          transport: {
-            host: mailHost,
-            port: mailPort,
-            secure: isSecurePort, 
-            requireTLS: isTlsPort,
-            auth: mailUser && mailPass ? {
-              user: mailUser,
-              pass: mailPass,
-            } : undefined,
-            connectionTimeout: 30000,
-            greetingTimeout: 30000,
-            socketTimeout: 30000,
-            pool: true,
-            maxConnections: 5,
-            maxMessages: 100,
+      useFactory: async (configService: ConfigService) => ({
+        transport: {
+          host: configService.get<string>('MAIL_HOST') || process.env.SMTP_HOST,
+          port: parseInt(configService.get<string>('MAIL_PORT') || process.env.SMTP_PORT || '587', 10),
+          secure: false, // true for 465, false for other ports
+          auth: {
+            user: configService.get<string>('MAIL_USER') || process.env.SMTP_USER,
+            pass: configService.get<string>('MAIL_PASS') || process.env.SMTP_PASS,
           },
-          defaults: {
-            from: `"AICShop" <${configService.get<string>('MAIL_FROM')}>`,
+          // ⚠️ Quan trọng để tránh bị chặn
+          tls: {
+            rejectUnauthorized: false, // Chỉ dùng trong dev
           },
-        };
-      },
+          connectionTimeout: 30000,
+          greetingTimeout: 30000,
+          socketTimeout: 30000,
+        },
+        defaults: {
+          from: `"AICShop" <${configService.get<string>('MAIL_FROM')}>`,
+        },
+      }),
     }),
   ],
   controllers: [AuthController],
