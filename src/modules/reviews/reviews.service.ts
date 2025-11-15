@@ -44,10 +44,11 @@ export class ReviewsService {
       throw new NotFoundException('Đơn hàng không tồn tại hoặc không thuộc về bạn');
     }
 
-    // 2. Validate order is DELIVERED
-    if (order.status !== OrderStatus.DELIVERED) {
+    // 2. Validate order is DELIVERED or COMPLETED
+    const allowedStatuses = [OrderStatus.DELIVERED, OrderStatus.COMPLETED];
+    if (!allowedStatuses.includes(order.status)) {
       throw new BadRequestException(
-        'Bạn chỉ có thể đánh giá sau khi đơn hàng được giao thành công',
+        'Bạn chỉ có thể đánh giá sau khi đơn hàng được giao thành công (trạng thái: Đã giao hoặc Hoàn thành)',
       );
     }
 
