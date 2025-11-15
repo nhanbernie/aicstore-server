@@ -2,18 +2,19 @@ import { ROLE } from '@enums/auth.enums';
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
-  Inject,
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductVariant } from '@products/entities/product-variant.entity';
 import { Product } from '@products/entities/product.entity';
 import { Repository } from 'typeorm';
+import { AddressesService } from '../addresses/addresses.service';
 import { CartService } from '../cart/cart.service';
 import { CartItemResponseDto } from '../cart/dto/cart.dto';
-import { AddressesService } from '../addresses/addresses.service';
+import { VendorWalletService } from '../vendor-wallet/vendor-wallet.service';
 import {
   CheckoutFromCartDto,
   CreateOrderDto,
@@ -23,8 +24,7 @@ import {
   UpdatePaymentStatusDto,
 } from './dto/order.dto';
 import { OrderItem } from './entities/order-item.entity';
-import { Order, OrderStatus, PaymentStatus, PaymentMethod } from './entities/order.entity';
-import { VendorWalletService } from '../vendor-wallet/vendor-wallet.service';
+import { Order, OrderStatus, PaymentMethod, PaymentStatus } from './entities/order.entity';
 
 @Injectable()
 export class OrdersService {
@@ -46,8 +46,15 @@ export class OrdersService {
 
   async create(userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
     // Validate shipping info: must have either addressId OR manual shipping fields
-    if (!createOrderDto.addressId && (!createOrderDto.shippingName || !createOrderDto.shippingPhone || !createOrderDto.shippingAddress)) {
-      throw new BadRequestException('Either addressId or manual shipping information (name, phone, address) must be provided');
+    if (
+      !createOrderDto.addressId &&
+      (!createOrderDto.shippingName ||
+        !createOrderDto.shippingPhone ||
+        !createOrderDto.shippingAddress)
+    ) {
+      throw new BadRequestException(
+        'Either addressId or manual shipping information (name, phone, address) must be provided',
+      );
     }
 
     // Fetch address if addressId provided
@@ -153,7 +160,7 @@ export class OrdersService {
     }
 
     // Calculate shipping fee (simple logic, can be enhanced)
-    const shippingFee = subtotal >= 1000000 ? 0 : 30000;
+    const shippingFee = subtotal >= 1000000 ? 0 : 5000;
     const taxAmount = 0; // Can add tax calculation
     const discountAmount = 0; // Can add discount logic
     const totalAmount = subtotal + shippingFee + taxAmount - discountAmount;
@@ -238,7 +245,7 @@ export class OrdersService {
     let itemsToCheckout = cart.items;
     if (checkoutDto.cartItemIds && checkoutDto.cartItemIds.length > 0) {
       itemsToCheckout = cart.items.filter((item) => checkoutDto.cartItemIds!.includes(item.id));
-      
+
       if (itemsToCheckout.length === 0) {
         throw new BadRequestException('No valid cart items selected for checkout.');
       }
@@ -497,7 +504,7 @@ export class OrdersService {
     const order = await this.findOne(id);
     const oldPaymentStatus = order.paymentStatus;
     order.paymentStatus = updatePaymentDto.paymentStatus;
-    
+
     // Nếu payment status chuyển sang PAID và order status đang là PENDING
     // thì tự động chuyển order status sang ADMIN_CONFIRMED
     if (
@@ -509,7 +516,7 @@ export class OrdersService {
       order.adminConfirmedAt = new Date();
       console.log(`[OrdersService] Auto-confirmed order ${id} after payment success`);
     }
-    
+
     return this.orderRepository.save(order);
   }
 
@@ -873,7 +880,7 @@ export class OrdersService {
    */
   async adminConfirmOrder(orderId: string): Promise<Order> {
     const order = await this.findOne(orderId);
-    
+
     if (order.status !== OrderStatus.PENDING) {
       throw new BadRequestException('Chỉ có thể xác nhận đơn hàng ở trạng thái PENDING');
     }
@@ -915,7 +922,6 @@ export class OrdersService {
     return this.orderRepository.save(order);
   }
 
-
   async updateStatusForVendor(
     orderId: string,
     vendorId: string,
@@ -924,8 +930,7 @@ export class OrdersService {
     const order = await this.findOneForVendor(orderId, vendorId);
 
     // Chỉ cho phép update từ admin_confirmed sang shipping hoặc delivered
-    if (order.status !== OrderStatus.ADMIN_CONFIRMED && 
-        order.status !== OrderStatus.SHIPPING) {
+    if (order.status !== OrderStatus.ADMIN_CONFIRMED && order.status !== OrderStatus.SHIPPING) {
       throw new BadRequestException(
         `Không thể cập nhật trạng thái từ ${order.status}. Chỉ có thể cập nhật từ ADMIN_CONFIRMED hoặc SHIPPING`,
       );
@@ -950,7 +955,7 @@ export class OrdersService {
 
     order.status = updateStatusDto.status;
     order.paymentStatus = PaymentStatus.PAID;
-    
+
     if (updateStatusDto.trackingNumber) {
       order.trackingNumber = updateStatusDto.trackingNumber;
     }
