@@ -51,15 +51,18 @@ export class SeedService {
     private readonly orderItemRepository: Repository<OrderItem>,
   ) { }
 
-  async seedAll(): Promise<void> {
+  async seedAll(force: boolean = false): Promise<void> {
     this.logger.log('Starting database seeding...');
 
     try {
-      // Check if data already exists
-      const userCount = await this.userRepository.count();
-      if (userCount > 0) {
-        this.logger.warn('Database already contains data. Skipping seeding.');
-        return;
+      // Check if data already exists (unless force is true)
+      if (!force) {
+        const userCount = await this.userRepository.count();
+        if (userCount > 0) {
+          this.logger.warn('Database already contains data. Skipping seeding.');
+          this.logger.warn('Use "refresh" command to clear and re-seed, or modify seedAll(true) to force seed.');
+          return;
+        }
       }
 
       await this.seedUsers();
@@ -83,7 +86,12 @@ export class SeedService {
       const queryRunner =
         this.userRepository.manager.connection.createQueryRunner();
 
-      await queryRunner.query('SET session_replication_role = replica;');
+      // Try to set session_replication_role (may fail on Neon/cloud databases)
+      try {
+        await queryRunner.query('SET session_replication_role = replica;');
+      } catch (error) {
+        this.logger.warn('Cannot set session_replication_role (cloud database), continuing...');
+      }
 
       // Clear tables in reverse order
       await queryRunner.query('TRUNCATE TABLE "order_items" CASCADE;');
@@ -102,7 +110,12 @@ export class SeedService {
       await queryRunner.query('TRUNCATE TABLE "users" CASCADE;');
       await queryRunner.query('TRUNCATE TABLE "refresh_tokens" CASCADE;');
 
-      await queryRunner.query('SET session_replication_role = DEFAULT;');
+      // Try to reset session_replication_role
+      try {
+        await queryRunner.query('SET session_replication_role = DEFAULT;');
+      } catch (error) {
+        // Ignore if it fails
+      }
 
       this.logger.log('All data cleared successfully!');
     } catch (error) {
