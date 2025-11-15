@@ -12,11 +12,13 @@ import { ProductVariant } from '@products/entities/product-variant.entity';
 import { Product } from '@products/entities/product.entity';
 import { Repository } from 'typeorm';
 import { CartService } from '../cart/cart.service';
+import { CartItemResponseDto } from '../cart/dto/cart.dto';
 import { AddressesService } from '../addresses/addresses.service';
 import {
   CheckoutFromCartDto,
   CreateOrderDto,
   OrderFilterDto,
+  ReorderDto,
   UpdateOrderStatusDto,
   UpdatePaymentStatusDto,
 } from './dto/order.dto';
@@ -521,6 +523,193 @@ export class OrdersService {
 
     order.status = OrderStatus.CANCELLED;
     return this.orderRepository.save(order);
+  }
+
+  /**
+   * Reorder items from a previous order
+   * @param orderId - The ID of the order to reorder from
+   * @param userId - The user ID requesting the reorder
+   * @param reorderDto - Reorder options (addToCart: true adds to cart, false creates order directly)
+   * @returns Cart items added or new order created
+   */
+  async reorder(
+    orderId: string,
+    userId: string,
+    reorderDto: ReorderDto = { addToCart: true },
+  ): Promise<{ success: boolean; message: string; data: any; unavailableItems?: any[] }> {
+    // Get the original order with items
+    const originalOrder = await this.findOne(orderId, userId);
+
+    if (!originalOrder.items || originalOrder.items.length === 0) {
+      throw new BadRequestException('Order has no items to reorder');
+    }
+
+    const unavailableItems: Array<{
+      productId: string;
+      variantId?: string | undefined;
+      productName: string;
+      reason: string;
+    }> = [];
+
+    const availableItems: Array<{
+      productId: string;
+      variantId?: string;
+      quantity: number;
+    }> = [];
+
+    // Check availability of each item
+    for (const item of originalOrder.items) {
+      try {
+        // Skip if productId is missing
+        if (!item.productId) {
+          unavailableItems.push({
+            productId: 'unknown',
+            variantId: item.variantId || undefined,
+            productName: item.productName,
+            reason: 'Product ID is missing',
+          });
+          continue;
+        }
+
+        // Check if product still exists and is active
+        const product = await this.productRepository.findOne({
+          where: { id: item.productId, isActive: true },
+        });
+
+        if (!product) {
+          unavailableItems.push({
+            productId: item.productId,
+            variantId: item.variantId || undefined,
+            productName: item.productName,
+            reason: 'Product no longer available or inactive',
+          });
+          continue;
+        }
+
+        // Check variant if exists
+        if (item.variantId) {
+          const variant = await this.productVariantRepository.findOne({
+            where: { id: item.variantId, productId: item.productId },
+          });
+
+          if (!variant) {
+            unavailableItems.push({
+              productId: item.productId,
+              variantId: item.variantId || undefined,
+              productName: item.productName,
+              reason: 'Product variant no longer available',
+            });
+            continue;
+          }
+
+          // Check stock
+          if (variant.stockQty < item.quantity) {
+            unavailableItems.push({
+              productId: item.productId,
+              variantId: item.variantId || undefined,
+              productName: item.productName,
+              reason: `Insufficient stock. Available: ${variant.stockQty}, Requested: ${item.quantity}`,
+            });
+            continue;
+          }
+        } else {
+          // Check product stock
+          if (product.stockQty < item.quantity) {
+            unavailableItems.push({
+              productId: item.productId,
+              variantId: undefined,
+              productName: item.productName,
+              reason: `Insufficient stock. Available: ${product.stockQty}, Requested: ${item.quantity}`,
+            });
+            continue;
+          }
+        }
+
+        // Item is available
+        availableItems.push({
+          productId: item.productId!, // We've already checked it exists above
+          variantId: item.variantId || undefined,
+          quantity: item.quantity,
+        });
+      } catch (error) {
+        unavailableItems.push({
+          productId: item.productId || 'unknown',
+          variantId: item.variantId || undefined,
+          productName: item.productName,
+          reason: 'Error checking availability',
+        });
+      }
+    }
+
+    if (availableItems.length === 0) {
+      throw new BadRequestException(
+        'None of the items from this order are available for reorder. ' +
+          unavailableItems.map((item) => `${item.productName}: ${item.reason}`).join('; '),
+      );
+    }
+
+    // Add to cart or create order directly
+    if (reorderDto.addToCart !== false) {
+      // Add items to cart
+      const cartItems: CartItemResponseDto[] = [];
+      for (const item of availableItems) {
+        try {
+          const cartItem = await this.cartService.addToCart(userId, {
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
+          cartItems.push(cartItem);
+        } catch (error) {
+          // If adding to cart fails, add to unavailable items
+          const orderItem = originalOrder.items.find(
+            (oi) => oi.productId === item.productId && oi.variantId === item.variantId,
+          );
+          unavailableItems.push({
+            productId: item.productId,
+            variantId: item.variantId,
+            productName: orderItem?.productName || 'Unknown',
+            reason: error.message || 'Failed to add to cart',
+          });
+        }
+      }
+
+      return {
+        success: true,
+        message:
+          unavailableItems.length > 0
+            ? `Added ${cartItems.length} item(s) to cart. ${unavailableItems.length} item(s) could not be added.`
+            : `Successfully added ${cartItems.length} item(s) to cart`,
+        data: { cartItems, addedCount: cartItems.length },
+        unavailableItems: unavailableItems.length > 0 ? unavailableItems : undefined,
+      };
+    } else {
+      // Create order directly using original shipping info
+      const createOrderDto: CreateOrderDto = {
+        items: availableItems,
+        paymentMethod: originalOrder.paymentMethod,
+        shippingName: originalOrder.shippingName,
+        shippingPhone: originalOrder.shippingPhone,
+        shippingAddress: originalOrder.shippingAddress,
+        shippingCity: originalOrder.shippingCity,
+        shippingDistrict: originalOrder.shippingDistrict,
+        shippingWard: originalOrder.shippingWard,
+        shippingPostalCode: originalOrder.shippingPostalCode,
+        customerNotes: `Reorder from order ${originalOrder.orderNumber}`,
+      };
+
+      const newOrder = await this.create(userId, createOrderDto);
+
+      return {
+        success: true,
+        message:
+          unavailableItems.length > 0
+            ? `Order created with ${availableItems.length} item(s). ${unavailableItems.length} item(s) could not be included.`
+            : `Order created successfully with ${availableItems.length} item(s)`,
+        data: newOrder,
+        unavailableItems: unavailableItems.length > 0 ? unavailableItems : undefined,
+      };
+    }
   }
 
   async getOrderStatistics(userId?: string, userRole?: string): Promise<any> {

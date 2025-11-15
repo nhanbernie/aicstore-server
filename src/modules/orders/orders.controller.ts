@@ -20,10 +20,12 @@ import {
   CheckoutFromCartDto,
   CreateOrderDto,
   OrderFilterDto,
+  ReorderDto,
   UpdateOrderStatusDto,
   UpdatePaymentStatusDto,
 } from './dto/order.dto';
 import { OrdersService } from './orders.service';
+import { OrderStatus } from './entities/order.entity';
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -227,6 +229,80 @@ export class OrdersController {
       success: true,
       message: 'Hủy đơn hàng thành công',
       data: order,
+    };
+  }
+
+  @Post(':id/reorder')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Reorder items from a previous order',
+    description:
+      'Add all items from a previous order to cart or create a new order directly. ' +
+      'Items that are no longer available or out of stock will be excluded.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Items reordered successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Successfully added 3 item(s) to cart' },
+        data: { type: 'object' },
+        unavailableItems: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              productId: { type: 'string' },
+              variantId: { type: 'string' },
+              productName: { type: 'string' },
+              reason: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - Order has no items or all items unavailable' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @HttpCode(HttpStatus.OK)
+  async reorder(@Request() req, @Param('id') id: string, @Body() reorderDto: ReorderDto) {
+    return await this.ordersService.reorder(id, req.user.userId, reorderDto);
+  }
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get order history',
+    description: 'Get completed/delivered orders for the authenticated user',
+  })
+  @ApiResponse({ status: 200, description: 'Order history retrieved successfully' })
+  async getOrderHistory(@Request() req, @Query() filterDto: OrderFilterDto) {
+    // Filter for completed/delivered orders only
+    const historyFilterDto: OrderFilterDto = {
+      ...filterDto,
+      status: OrderStatus.COMPLETED, // Can be enhanced to include DELIVERED as well
+    };
+
+    const result = await this.ordersService.findAll(
+      historyFilterDto,
+      req.user.roles?.[0],
+      req.user.userId,
+    );
+
+    return {
+      success: true,
+      message: 'Lấy lịch sử đơn hàng thành công',
+      data: result.orders,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
     };
   }
 }
