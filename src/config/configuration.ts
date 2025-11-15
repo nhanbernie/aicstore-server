@@ -8,6 +8,9 @@ export default () => ({
     database: process.env.DATABASE_NAME || 'wdp_server',
     synchronize: process.env.NODE_ENV !== 'production', 
     logging: process.env.NODE_ENV === 'development',
+    ssl: process.env.DATABASE_HOST?.includes('neon.tech') || process.env.DATABASE_HOST?.includes('aws.neon.tech')
+      ? { rejectUnauthorized: false }
+      : false,
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production-min-256-bits',
