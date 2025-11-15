@@ -7,6 +7,11 @@ import { OrderItem } from '@modules/orders/entities/order-item.entity';
 import { User } from '@users/entity/user.schema';
 import { Product } from '@modules/products/entities/product.entity';
 import { Category } from '@modules/categories/entity/category.entity';
+import { Payment } from '@modules/payments/entitiy/payment.entity';
+import { VendorWalletModule } from '../vendor-wallet/vendor-wallet.module';
+import { VendorWallet } from '../vendor-wallet/entity/vendor-wallet.schema';
+import { VendorWithdrawalRequest } from '../vendor-wallet/entity/vendor-withdrawal-request.entity';
+import { Vendor } from '../vendors/entity/vendor.schema';
 
 @Module({
   imports: [
@@ -16,7 +21,12 @@ import { Category } from '@modules/categories/entity/category.entity';
       User,
       Product,
       Category,
+      Payment,
+      VendorWallet,
+      VendorWithdrawalRequest,
+      Vendor,
     ]),
+    VendorWalletModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

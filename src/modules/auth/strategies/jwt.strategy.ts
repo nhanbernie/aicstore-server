@@ -46,11 +46,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    console.log('JWT Strategy - User validated successfully');
+    // Get vendorId if user has VENDOR role
+    let vendorId = null;
+    if (payload.roles && payload.roles.includes('vendor')) {
+      const userWithVendor = await this.usersService.findByIdWithVendor(payload.sub);
+      vendorId = userWithVendor?.vendor?.id || null;
+    }
+
+    console.log('JWT Strategy - User validated successfully', { vendorId });
     return {
       userId: payload.sub,
       email: payload.email,
       roles: payload.roles,
+      vendorId: vendorId,
     };
   }
 }
