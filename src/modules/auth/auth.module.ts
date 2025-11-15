@@ -37,24 +37,38 @@ import { PasswordResetService } from './services/password-reset.service';
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        transport: {
-          host: configService.get<string>('MAIL_HOST'),
-          port: configService.get<number>('MAIL_PORT'),
-          secure: false,
-          requireTLS: configService.get<number>('MAIL_PORT') === 587, // Enable TLS for port 587
-          auth: {
-            user: configService.get<string>('MAIL_USER'),
-            pass: configService.get<string>('MAIL_PASS'),
+      useFactory: async (configService: ConfigService) => {
+        const mailHost = configService.get<string>('MAIL_HOST');
+        const mailPort = configService.get<number>('MAIL_PORT') || 587;
+        const mailUser = configService.get<string>('MAIL_USER');
+        const mailPass = configService.get<string>('MAIL_PASS');
+        
+        // Determine secure and TLS settings based on port
+        const isSecurePort = mailPort === 465;
+        const isTlsPort = mailPort === 587;
+        
+        return {
+          transport: {
+            host: mailHost,
+            port: mailPort,
+            secure: isSecurePort, 
+            requireTLS: isTlsPort,
+            auth: mailUser && mailPass ? {
+              user: mailUser,
+              pass: mailPass,
+            } : undefined,
+            connectionTimeout: 30000,
+            greetingTimeout: 30000,
+            socketTimeout: 30000,
+            pool: true,
+            maxConnections: 5,
+            maxMessages: 100,
           },
-          connectionTimeout: 10000, // 10 seconds
-          greetingTimeout: 10000, 
-          socketTimeout: 10000,
-        },
-        defaults: {
-          from: `"AICShop" <${configService.get<string>('MAIL_FROM')}>`,
-        },
-      }),
+          defaults: {
+            from: `"AICShop" <${configService.get<string>('MAIL_FROM')}>`,
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController],
