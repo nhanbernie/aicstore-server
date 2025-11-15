@@ -65,14 +65,15 @@ export class PaymentsService {
     };
 
     const orderCode = Number(Date.now());
+    const clientUrl = this.configService.get<string>('client.url') || 'http://localhost:3001';
     const dataForSignature = {
       orderCode,
       amount: body.amount,
       description:
         body.description ||
         `Thanh toan don hang #${orderCode.toString().slice(0, 4)}`,
-      cancelUrl: this.configService.getOrThrow<string>('PAYMENT_CANCEL_URL'),
-      returnUrl: this.configService.getOrThrow<string>('PAYMENT_RETURN_URL'),
+      cancelUrl: this.configService.get<string>('client.paymentCancelUrl') || `${clientUrl.replace(/\/$/, '')}/payment/cancel`,
+      returnUrl: this.configService.get<string>('client.paymentReturnUrl') || `${clientUrl.replace(/\/$/, '')}/payment/success`,
     };
     const signature = this.generateSignature(
       dataForSignature,
