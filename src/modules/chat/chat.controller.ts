@@ -89,6 +89,30 @@ export class ChatController {
     );
   }
 
+  @Get('vendors/:vendorId/messages')
+  @ApiOperation({
+    summary: 'Get all messages with a vendor',
+    description: 'Get complete message history between current user and a specific vendor',
+  })
+  @ApiParam({ name: 'vendorId', description: 'Vendor ID' })
+  @ApiQuery({ name: 'limit', required: false, example: 100, description: 'Maximum number of messages to retrieve' })
+  @ResponseMessage('Messages retrieved successfully')
+  async getVendorMessages(
+    @Request() req,
+    @Param('vendorId', ParseUUIDPipe) vendorId: string,
+    @Query('limit') limit?: number,
+  ): Promise<MessageResponseDto[]> {
+    const messages = await this.chatService.getVendorMessages(
+      req.user.userId,
+      vendorId,
+      limit || 100,
+    );
+
+    return messages.map((msg) =>
+      plainToClass(MessageResponseDto, msg, { excludeExtraneousValues: true }),
+    );
+  }
+
   @Get('unread-count')
   @ApiOperation({
     summary: 'Get total unread messages count',

@@ -93,7 +93,7 @@ async function bootstrap() {
   // Alternative JSON endpoint for the OpenAPI spec
   SwaggerModule.setup('api/json', app, document);
 
-  const port = process.env.PORT ?? 3000;
+  const port = process.env.PORT ?? 4444;
   await app.listen(port);
 
   console.log(`Application is running on: http://localhost:${port}/api`);

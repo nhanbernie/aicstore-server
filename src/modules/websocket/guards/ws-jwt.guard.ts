@@ -21,21 +21,33 @@ export class WsJwtGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      throw new WsException('Unauthorized: Invalid token');
+      if (error instanceof WsException) {
+        throw error;
+      }
+
+      let errorMessage = 'Unauthorized: Invalid token';
+      
+      if (error?.name === 'TokenExpiredError') {
+        errorMessage = 'Unauthorized: Token expired';
+      } else if (error?.name === 'JsonWebTokenError') {
+        errorMessage = 'Unauthorized: Invalid token format';
+      } else if (error?.name === 'NotBeforeError') {
+        errorMessage = 'Unauthorized: Token not active yet';
+      }
+
+      throw new WsException(errorMessage);
     }
   }
 
   private extractToken(client: Socket): string | null {
-    // Try to get token from handshake auth
     const authToken = client.handshake.auth?.token;
     if (authToken) {
-      return authToken.replace('Bearer ', '');
+      return authToken.replace(/^Bearer\s+/i, '').trim();
     }
 
-    // Try to get token from headers
     const headerToken = client.handshake.headers?.authorization;
     if (headerToken) {
-      return headerToken.replace('Bearer ', '');
+      return headerToken.replace(/^Bearer\s+/i, '').trim();
     }
 
     return null;
