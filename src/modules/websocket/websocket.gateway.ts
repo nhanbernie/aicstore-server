@@ -62,11 +62,39 @@ export class WebsocketGateway
   ) {
     const user = client.data.user;
 
-    // Find or create conversation
-    const conversation = await this.chatService.findOrCreateConversation(
-      user.sub,
-      data.vendorId,
-    );
+    // Determine if current socket belongs to a vendor or a normal user
+    const roles: any[] = Array.isArray(user?.roles) ? user.roles : [];
+    const isVendor =
+      roles.map((r: any) => r?.toString?.().toUpperCase?.() || r).includes('VENDOR');
+
+    let conversation;
+
+    if (isVendor) {
+      // Vendor joining an existing conversation with a specific user.
+      // FE sẽ gửi vendorId = userId của khách (xem ChatListPage/useChatSocket).
+      let vendorId = user.vendorId;
+      if (!vendorId) {
+        // Fallback resolve by userId
+        const authUserId = user?.userId || user?.sub;
+        vendorId = await this.chatService.resolveVendorIdByUserId(authUserId);
+      }
+      if (!vendorId) {
+        this.logger.error('Vendor vendorId could not be resolved; cannot join conversation');
+        client.emit('exception', { status: 'error', message: 'Unauthorized: Missing vendorId' });
+        return;
+      }
+
+      conversation = await this.chatService.findOrCreateConversation(
+        data.vendorId, // treated as userId when vendor joins
+        vendorId,
+      );
+    } else {
+      // Normal user joining conversation with a vendor (current behavior)
+      conversation = await this.chatService.findOrCreateConversation(
+        user?.userId || user?.sub,
+        data.vendorId,
+      );
+    }
 
     // Join conversation room
     const roomName = `conversation_${conversation.id}`;
@@ -102,11 +130,27 @@ export class WebsocketGateway
   ) {
     const user = client.data.user;
 
+    // Derive correct senderId for each role
+    const roles: any[] = Array.isArray(user?.roles) ? user.roles : [];
+    const isVendor =
+      roles.map((r: any) => r?.toString?.().toUpperCase?.() || r).includes('VENDOR');
+    let senderId = isVendor ? user?.vendorId : (user?.userId || user?.sub);
+    if (isVendor && !senderId) {
+      const authUserId = user?.userId || user?.sub;
+      senderId = await this.chatService.resolveVendorIdByUserId(authUserId);
+    }
+
+    if (!senderId) {
+      this.logger.error('Missing senderId in token payload');
+      client.emit('exception', { status: 'error', message: 'Unauthorized: Missing senderId' });
+      return;
+    }
+
     // Save message to database
     const message = await this.chatService.sendMessage(
       data.conversationId,
-      user.sub,
-      user.role === 'vendor' ? SenderType.VENDOR : SenderType.USER,
+      senderId,
+      isVendor ? SenderType.VENDOR : SenderType.USER,
       data,
     );
 
@@ -130,7 +174,7 @@ export class WebsocketGateway
 
     // Broadcast typing status to conversation room (except sender)
     client.to(`conversation_${data.conversationId}`).emit('user_typing', {
-      userId: user.sub,
+      userId: user?.userId || user?.sub,
       isTyping: data.isTyping,
     });
   }
@@ -144,16 +188,20 @@ export class WebsocketGateway
     const user = client.data.user;
 
     // Mark messages as read
+    const roles: any[] = Array.isArray(user?.roles) ? user.roles : [];
+    const isVendor =
+      roles.map((r: any) => r?.toString?.().toUpperCase?.() || r).includes('VENDOR');
+
     await this.chatService.markAsRead(
       data.conversationId,
-      user.sub,
-      user.role === 'vendor',
+      user?.userId || user?.sub,
+      isVendor,
     );
 
     // Notify conversation room
     this.server.to(`conversation_${data.conversationId}`).emit('messages_read', {
       conversationId: data.conversationId,
-      readBy: user.role === 'vendor' ? 'VENDOR' : 'USER',
+      readBy: isVendor ? 'VENDOR' : 'USER',
     });
   }
 

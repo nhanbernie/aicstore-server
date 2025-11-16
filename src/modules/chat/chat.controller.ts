@@ -55,9 +55,17 @@ export class ChatController {
   })
   @ResponseMessage('Conversations retrieved successfully')
   async getConversations(@Request() req): Promise<ConversationResponseDto[]> {
-    const isVendor = req.user.role === 'VENDOR' && req.user.vendorId;
+    const roles: any[] = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    const normalizedRoles = roles.map((r) => r?.toString?.().toUpperCase?.() || r);
+    const isVendorRole = normalizedRoles.includes('VENDOR');
+
+    let vendorId = req.user?.vendorId || req.user?.vendor?.id;
+    if (isVendorRole && !vendorId) {
+      vendorId = await this.chatService.resolveVendorIdByUserId(req.user.userId);
+    }
+    const isVendor = isVendorRole && !!vendorId;
     const conversations = isVendor
-      ? await this.chatService.getVendorConversations(req.user.vendorId)
+      ? await this.chatService.getVendorConversations(vendorId)
       : await this.chatService.getUserConversations(req.user.userId);
 
     return conversations.map((conv) =>
@@ -120,8 +128,14 @@ export class ChatController {
   })
   @ResponseMessage('Unread count retrieved successfully')
   async getUnreadCount(@Request() req): Promise<{ count: number }> {
-    const isVendor = req.user.role === 'VENDOR' && req.user.vendorId;
-    const userId = isVendor ? req.user.vendorId : req.user.userId;
+    const role = (req.user?.role || '').toString().toUpperCase();
+    let vendorId = req.user?.vendorId || req.user?.vendor?.id;
+    const isVendorRole = role === 'VENDOR';
+    if (isVendorRole && !vendorId) {
+      vendorId = await this.chatService.resolveVendorIdByUserId(req.user.userId);
+    }
+    const isVendor = isVendorRole && !!vendorId;
+    const userId = isVendor ? vendorId : req.user.userId;
     const count = await this.chatService.getTotalUnreadCount(userId, isVendor);
 
     return { count };

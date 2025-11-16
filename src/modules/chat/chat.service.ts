@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Conversation, Message, SenderType } from './entities';
+import { Vendor } from '@modules/vendors/entity/vendor.schema';
 import { SendMessageDto } from './dto';
 
 @Injectable()
@@ -11,6 +12,8 @@ export class ChatService {
     private readonly conversationRepository: Repository<Conversation>,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(Vendor)
+    private readonly vendorRepository: Repository<Vendor>,
   ) {}
 
   async findOrCreateConversation(userId: string, vendorId: string): Promise<Conversation> {
@@ -187,5 +190,11 @@ export class ChatService {
         sum + (isVendor ? conv.unreadCountVendor : conv.unreadCountUser),
       0,
     );
+  }
+
+  async resolveVendorIdByUserId(userId: string): Promise<string | null> {
+    if (!userId) return null;
+    const vendor = await this.vendorRepository.findOne({ where: { userId } });
+    return vendor?.id || null;
   }
 }
