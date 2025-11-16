@@ -34,7 +34,7 @@ export class RefreshTokenService {
 
     const refreshToken = this.jwtService.sign(payload, {
       secret: refreshSecret,
-      expiresIn: refreshExpiresIn,
+      expiresIn: (refreshExpiresIn ?? '7d') as any,
     });
 
     const refreshTokenEntity = this.refreshTokenRepository.create({

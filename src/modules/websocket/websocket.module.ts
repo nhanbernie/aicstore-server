@@ -10,12 +10,16 @@ import { ChatModule } from '@modules/chat/chat.module';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('jwt.secret'),
-        signOptions: {
-          expiresIn: configService.get<string>('jwt.expiresIn'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const expiresIn =
+          (configService.get<string>('jwt.expiresIn') ?? '15m') as any;
+        return {
+          secret: configService.get<string>('jwt.secret'),
+          signOptions: {
+            expiresIn,
+          },
+        };
+      },
     }),
     forwardRef(() => ChatModule),
   ],

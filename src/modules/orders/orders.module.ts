@@ -8,6 +8,7 @@ import { CartModule } from '../cart/cart.module';
 import { VendorsModule } from '../vendors/vendors.module';
 import { VendorWalletModule } from '../vendor-wallet/vendor-wallet.module';
 import { AddressesModule } from '../addresses/addresses.module';
+import { WebsocketModule } from '../websocket';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AddressesModule } from '../addresses/addresses.module';
     forwardRef(() => VendorsModule), 
     forwardRef(() => VendorWalletModule), 
     forwardRef(() => AddressesModule),
+    forwardRef(() => WebsocketModule),
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

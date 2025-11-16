@@ -26,12 +26,16 @@ import { PasswordResetService } from './services/password-reset.service';
     TypeOrmModule.forFeature([RefreshToken, PasswordResetToken]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('jwt.secret'),
-        signOptions: {
-          expiresIn: configService.get<string>('jwt.expiresIn'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const expiresIn =
+          (configService.get<string>('jwt.expiresIn') ?? '15m') as any;
+        return {
+          secret: configService.get<string>('jwt.secret'),
+          signOptions: {
+            expiresIn,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     MailerModule.forRootAsync({

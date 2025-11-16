@@ -7,7 +7,7 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';   
 import { ProductVariant } from '@products/entities/product-variant.entity';
 import { Product } from '@products/entities/product.entity';
 import { Repository } from 'typeorm';
@@ -25,6 +25,7 @@ import {
 } from './dto/order.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { Order, OrderStatus, PaymentMethod, PaymentStatus } from './entities/order.entity';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class OrdersService {
@@ -42,6 +43,7 @@ export class OrdersService {
     private readonly vendorWalletService: VendorWalletService,
     @Inject(forwardRef(() => AddressesService))
     private readonly addressesService: AddressesService,
+    private readonly websocketGateway: WebsocketGateway,
   ) {}
 
   /**
@@ -250,7 +252,24 @@ export class OrdersService {
     }
 
     // Reload order with items
-    return this.findOne(savedOrder.id);
+    const fullOrder = await this.findOne(savedOrder.id);
+
+    // Realtime notify user about new order
+    try {
+      this.websocketGateway.server
+        ?.to(`user_${userId}`)
+        .emit('order_created', {
+          orderId: fullOrder.id,
+          orderNumber: fullOrder.orderNumber,
+          totalAmount: fullOrder.totalAmount,
+          status: fullOrder.status,
+          createdAt: fullOrder.createdAt,
+        });
+    } catch (e) {
+      // Ignore websocket errors to not affect order creation
+    }
+
+    return fullOrder;
   }
 
   async createOrderFromCart(userId: string, checkoutDto: CheckoutFromCartDto): Promise<Order> {
