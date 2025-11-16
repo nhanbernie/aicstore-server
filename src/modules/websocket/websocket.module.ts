@@ -11,9 +11,9 @@ import { ChatModule } from '@modules/chat/chat.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('jwtSecret'),
+        secret: configService.get<string>('jwt.secret'),
         signOptions: {
-          expiresIn: configService.get<string>('jwtExpiresIn'),
+          expiresIn: configService.get<string>('jwt.expiresIn'),
         },
       }),
     }),

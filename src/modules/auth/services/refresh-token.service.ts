@@ -20,13 +20,21 @@ export class RefreshTokenService {
   ) {}
 
   async generateRefreshToken(user: User): Promise<RefreshToken> {
-    // Revoke existing refresh tokens for this user
     await this.revokeRefreshTokensByUserId(user.id);
 
     const payload = { sub: user.id, email: user.email, roles: user.roles };
+    const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
+    const refreshExpiresIn = this.configService.get<string>(
+      'jwt.refreshExpiresIn',
+    );
+
+    if (!refreshSecret) {
+      throw new Error('JWT refresh secret is not configured');
+    }
+
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('jwt.refreshSecret'),
-      expiresIn: this.configService.get<string>('jwt.refreshExpiresIn'),
+      secret: refreshSecret,
+      expiresIn: refreshExpiresIn,
     });
 
     const refreshTokenEntity = this.refreshTokenRepository.create({
@@ -40,9 +48,26 @@ export class RefreshTokenService {
 
   async verifyRefreshToken(token: string): Promise<User> {
     try {
-      const payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('jwt.refreshSecret'),
-      });
+      const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
+      if (!refreshSecret) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      let payload: any;
+      try {
+        payload = this.jwtService.verify(token, {
+          secret: refreshSecret,
+        });
+      } catch (jwtError: any) {
+        if (jwtError.name === 'TokenExpiredError') {
+          throw new UnauthorizedException('Refresh token expired');
+        } else if (jwtError.name === 'JsonWebTokenError') {
+          throw new UnauthorizedException('Invalid refresh token format');
+        } else if (jwtError.name === 'NotBeforeError') {
+          throw new UnauthorizedException('Refresh token not active yet');
+        }
+        throw jwtError;
+      }
 
       const refreshTokenEntity = await this.refreshTokenRepository.findOne({
         where: { token, userId: payload.sub },
@@ -54,12 +79,21 @@ export class RefreshTokenService {
       }
 
       if (!refreshTokenEntity.isValid()) {
-        await this.revokeRefreshToken(refreshTokenEntity.id);
-        throw new UnauthorizedException('Refresh token expired or revoked');
+        if (refreshTokenEntity.isRevoked) {
+          throw new UnauthorizedException('Refresh token revoked');
+        }
+        if (refreshTokenEntity.isExpired()) {
+          await this.revokeRefreshToken(refreshTokenEntity.id);
+          throw new UnauthorizedException('Refresh token expired');
+        }
       }
 
       return refreshTokenEntity.user;
     } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -77,11 +111,12 @@ export class RefreshTokenService {
     await this.refreshTokenRepository.save(refreshToken);
   }
 
-  async revokeRefreshTokensByUserId(userId: string): Promise<void> {
-    await this.refreshTokenRepository.update(
+  async revokeRefreshTokensByUserId(userId: string): Promise<number> {
+    const result = await this.refreshTokenRepository.update(
       { userId, isRevoked: false },
       { isRevoked: true },
     );
+    return result.affected || 0;
   }
 
   async revokeRefreshTokenByToken(token: string): Promise<void> {
@@ -99,7 +134,6 @@ export class RefreshTokenService {
     const expiresIn = this.configService.get<string>('jwt.refreshExpiresIn') || '7d';
     const now = new Date();
     
-    // Parse the expiration string (e.g., '7d', '24h', '60m')
     const match = expiresIn.match(/^(\d+)([dhm])$/);
     if (!match) {
       throw new Error('Invalid JWT refresh expiration format');

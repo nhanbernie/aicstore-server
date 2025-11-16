@@ -19,6 +19,70 @@ class MessageSenderDto {
   avatar?: string;
 }
 
+class ConversationUserDto {
+  @ApiProperty()
+  @Expose()
+  id: string;
+
+  @ApiProperty()
+  @Expose()
+  email: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  firstName?: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  lastName?: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  phoneNumber?: string;
+}
+
+class ConversationVendorDto {
+  @ApiProperty()
+  @Expose()
+  id: string;
+
+  @ApiProperty()
+  @Expose()
+  businessName: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  businessDescription?: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  businessAddress?: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  businessPhone?: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  businessEmail?: string;
+
+  @ApiProperty()
+  @Expose()
+  status: string;
+
+  @ApiProperty()
+  @Expose()
+  userId: string;
+
+  @ApiProperty()
+  @Expose()
+  createdAt: Date;
+
+  @ApiProperty()
+  @Expose()
+  updatedAt: Date;
+}
+
 export class MessageResponseDto {
   @ApiProperty()
   @Expose()
@@ -91,11 +155,13 @@ export class ConversationResponseDto {
   @Expose()
   createdAt: Date;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: ConversationUserDto })
   @Expose()
-  user?: any;
+  @Type(() => ConversationUserDto)
+  user?: ConversationUserDto;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: ConversationVendorDto })
   @Expose()
-  vendor?: any;
+  @Type(() => ConversationVendorDto)
+  vendor?: ConversationVendorDto;
 }

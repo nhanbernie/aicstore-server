@@ -71,6 +71,29 @@ export class ChatService {
     });
   }
 
+  async getVendorMessages(
+    userId: string,
+    vendorId: string,
+    limit: number = 100,
+  ): Promise<Message[]> {
+    // Find conversation between user and vendor
+    const conversation = await this.conversationRepository.findOne({
+      where: { userId, vendorId },
+    });
+
+    if (!conversation) {
+      // Return empty array if no conversation exists
+      return [];
+    }
+
+    // Get messages from conversation
+    return await this.messageRepository.find({
+      where: { conversationId: conversation.id },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+  }
+
   async sendMessage(
     conversationId: string,
     senderId: string,
