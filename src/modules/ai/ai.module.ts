@@ -9,6 +9,7 @@ import { OrdersModule } from '@modules/orders/orders.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { CategoriesModule } from '@modules/categories/categories.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { AddressesModule } from '@modules/addresses/addresses.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AuthModule } from '@modules/auth/auth.module';
     OrdersModule, 
     ProductsModule,
     CategoriesModule,
+    AddressesModule,
     forwardRef(() => AuthModule)
   ],
   controllers: [AiController],

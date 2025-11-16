@@ -29,10 +29,10 @@ import { PasswordResetService } from './services/password-reset.service';
       useFactory: (configService: ConfigService) => {
         const expiresIn =
           (configService.get<string>('jwt.expiresIn') ?? '15m') as any;
-        return {
+        return {      
           secret: configService.get<string>('jwt.secret'),
           signOptions: {
-            expiresIn,
+            expiresIn,  
           },
         };
       },
@@ -55,9 +55,9 @@ import { PasswordResetService } from './services/password-reset.service';
             rejectUnauthorized: false, // Chỉ dùng trong dev
           },
           connectionTimeout: 30000,
-          greetingTimeout: 30000,
+          greetingTimeout: 30000,     
           socketTimeout: 30000,
-        },
+        },      
         defaults: {
           from: `"AICShop" <${configService.get<string>('MAIL_FROM')}>`,
         },

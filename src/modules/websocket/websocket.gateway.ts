@@ -18,9 +18,15 @@ import {
 } from '@modules/chat/dto';
 import { SenderType } from '@modules/chat/entities';
 
+const WS_ALLOWED_ORIGINS =
+  (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '*')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: WS_ALLOWED_ORIGINS.length > 0 ? WS_ALLOWED_ORIGINS : '*',
     credentials: true,
   },
 })
@@ -155,9 +161,10 @@ export class WebsocketGateway
     );
 
     // Broadcast message to conversation room
-    this.server.to(`conversation_${data.conversationId}`).emit('new_message', {
-      message,
-    });
+    // - Send to other participants in the room (exclude sender)
+    client.to(`conversation_${data.conversationId}`).emit('new_message', { message });
+    // - Echo back to sender with a different event to confirm persistence
+    client.emit('message_saved', { message });
 
     this.logger.log(
       `Message sent in conversation ${data.conversationId} by user ${user.sub}`,
